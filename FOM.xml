@@ -1,0 +1,167 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<objectModel
+        xsi:schemaLocation="http://standards.ieee.org/IEEE1516-2010 http://standards.ieee.org/downloads/1516/1516.2-2010/IEEE1516-DIF-2010.xsd"
+        xmlns="http://standards.ieee.org/IEEE1516-2010" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+
+    <modelIdentification notes="Note2">
+        <name>Shop FOM</name>
+        <type>FOM</type>
+        <version>1.0</version>
+    </modelIdentification>
+
+    <objects>
+        <objectClass>
+            <name>HLAobjectRoot</name>
+
+            <objectClass>
+                <name>Queue</name>
+                <sharing>PublishSubscribe</sharing>
+                <attribute>
+                    <name>maxSize</name>
+                    <dataType>HLAinteger32BE</dataType>
+                    <transportation>HLAreliable</transportation>
+                    <order>TimeStamp</order>
+                </attribute>
+                <attribute>
+                    <name>currentSize</name>
+                    <dataType>HLAinteger32BE</dataType>
+                    <transportation>HLAreliable</transportation>
+                    <order>TimeStamp</order>
+                </attribute>
+                <attribute>
+                    <name>queueId</name>
+                    <dataType>HLAinteger32BE</dataType>
+                    <transportation>HLAreliable</transportation>
+                    <order>TimeStamp</order>
+                </attribute>
+            </objectClass>
+
+            <objectClass>
+                <name>Client</name>
+                <sharing>PublishSubscribe</sharing>
+                <attribute>
+                    <name>isPrivileged</name>
+                    <dataType>HLAboolean</dataType>
+                    <transportation>HLAreliable</transportation>
+                    <order>TimeStamp</order>
+                </attribute>
+                <attribute>
+                    <name>numberOfProducts</name>
+                    <dataType>HLAinteger32BE</dataType>
+                    <transportation>HLAreliable</transportation>
+                    <order>TimeStamp</order>
+                </attribute>
+                <attribute>
+                    <name>clientId</name>
+                    <dataType>HLAinteger32BE</dataType>
+                    <transportation>HLAreliable</transportation>
+                    <order>TimeStamp</order>
+                </attribute>
+            </objectClass>
+
+            <objectClass>
+                <name>Checkout</name>
+                <sharing>PublishSubscribe</sharing>
+                <attribute>
+                    <name>isOpened</name>
+                    <dataType>HLAboolean</dataType>
+                    <transportation>HLAreliable</transportation>
+                    <order>TimeStamp</order>
+                </attribute>
+                <attribute>
+                    <name>checkoutId</name>
+                    <dataType>HLAinteger32BE</dataType>
+                    <transportation>HLAreliable</transportation>
+                    <order>TimeStamp</order>
+                </attribute>
+                <attribute>
+                    <name>queueId</name>
+                    <dataType>HLAinteger32BE</dataType>
+                    <transportation>HLAreliable</transportation>
+                    <order>TimeStamp</order>
+                </attribute>
+            </objectClass>
+
+        </objectClass>
+    </objects>
+
+    <interactions>
+        <interactionClass>
+            <name>HLAinteractionRoot</name>
+
+            <interactionClass>
+                <name>OpenCheckout</name>
+                <sharing>PublishSubscribe</sharing>
+                <dimensions/>
+                <transportation>HLAreliable</transportation>
+                <order>TimeStamp</order>
+                <parameter>
+                    <name>checkoutId</name>
+                    <dataType>HLAinteger32BE</dataType>
+                </parameter>
+            </interactionClass>
+
+            <interactionClass>
+                <name>CloseCheckout</name>
+                <sharing>PublishSubscribe</sharing>
+                <dimensions/>
+                <transportation>HLAreliable</transportation>
+                <order>TimeStamp</order>
+                <parameter>
+                    <name>checkoutId</name>
+                    <dataType>HLAinteger32BE</dataType>
+                </parameter>
+            </interactionClass>
+
+            <interactionClass>
+                <name>StartService</name>
+                <sharing>PublishSubscribe</sharing>
+                <dimensions/>
+                <transportation>HLAreliable</transportation>
+                <order>TimeStamp</order>
+                <parameter>
+                    <name>checkoutId</name>
+                    <dataType>HLAinteger32BE</dataType>
+                </parameter>
+                <parameter>
+                    <name>clientId</name>
+                    <dataType>HLAinteger32BE</dataType>
+                </parameter>
+            </interactionClass>
+
+            <interactionClass>
+                <name>EndService</name>
+                <sharing>PublishSubscribe</sharing>
+                <dimensions/>
+                <transportation>HLAreliable</transportation>
+                <order>TimeStamp</order>
+                <parameter>
+                    <name>checkoutId</name>
+                    <dataType>HLAinteger32BE</dataType>
+                </parameter>
+                <parameter>
+                    <name>clientId</name>
+                    <dataType>HLAinteger32BE</dataType>
+                </parameter>
+            </interactionClass>
+
+            <interactionClass>
+                <name>ChooseQueue</name>
+                <sharing>PublishSubscribe</sharing>
+                <dimensions/>
+                <transportation>HLAreliable</transportation>
+                <order>TimeStamp</order>
+                <parameter>
+                    <name>checkoutId</name>
+                    <dataType>HLAinteger32BE</dataType>
+                </parameter>
+                <parameter>
+                    <name>clientId</name>
+                    <dataType>HLAinteger32BE</dataType>
+                </parameter>
+            </interactionClass>
+
+        </interactionClass>
+    </interactions>
+
+</objectModel>

@@ -12,7 +12,7 @@
  *   (that goes for your lawyer as well)
  *
  */
-package federate.manager;
+package shop.rti.client;
 
 import hla.rti1516e.*;
 import hla.rti1516e.encoding.DecoderException;
@@ -23,10 +23,10 @@ import hla.rti1516e.time.HLAfloat64Time;
 
 /**
  * This class handles all incoming callbacks from the RTI regarding a particular
- * {@link ExampleFederate}. It will log information about any callbacks it
+ * {@link ClientFederate}. It will log information about any callbacks it
  * receives, thus demonstrating how to deal with the provided callback information.
  */
-public class ExampleFederateAmbassador extends NullFederateAmbassador
+public class ClientAmbassador extends NullFederateAmbassador
 {
 	//----------------------------------------------------------
 	//                    STATIC VARIABLES
@@ -35,7 +35,7 @@ public class ExampleFederateAmbassador extends NullFederateAmbassador
 	//----------------------------------------------------------
 	//                   INSTANCE VARIABLES
 	//----------------------------------------------------------
-	private ExampleFederate federate;
+	private ClientFederate federate;
 
 	// these variables are accessible in the package
 	protected double federateTime        = 0.0;
@@ -52,7 +52,7 @@ public class ExampleFederateAmbassador extends NullFederateAmbassador
 	//                      CONSTRUCTORS
 	//----------------------------------------------------------
 
-	public ExampleFederateAmbassador( ExampleFederate federate )
+	public ClientAmbassador(ClientFederate federate )
 	{
 		this.federate = federate;
 	}
@@ -62,7 +62,7 @@ public class ExampleFederateAmbassador extends NullFederateAmbassador
 	//----------------------------------------------------------
 	private void log( String message )
 	{
-		System.out.println( "FederateAmbassador: " + message );
+		System.out.println( "ClientFederateAmbassador: " + message );
 	}
 	
 	private String decodeFlavor( byte[] bytes )
@@ -129,7 +129,7 @@ public class ExampleFederateAmbassador extends NullFederateAmbassador
 	public void announceSynchronizationPoint( String label, byte[] tag )
 	{
 		log( "Synchronization point announced: " + label );
-		if( label.equals(federate.manager.ExampleFederate.READY_TO_RUN) )
+		if( label.equals(ClientFederate.READY_TO_RUN) )
 			this.isAnnounced = true;
 	}
 
@@ -137,7 +137,7 @@ public class ExampleFederateAmbassador extends NullFederateAmbassador
 	public void federationSynchronized( String label, FederateHandleSet failed )
 	{
 		log( "Federation Synchronized: " + label );
-		if( label.equals(federate.manager.ExampleFederate.READY_TO_RUN) )
+		if( label.equals(ClientFederate.READY_TO_RUN) )
 			this.isReadyToRun = true;
 	}
 

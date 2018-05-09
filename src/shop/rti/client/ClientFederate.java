@@ -12,7 +12,7 @@
  *   (that goes for your lawyer as well)
  *
  */
-package federate.manager;
+package shop.rti.client;
 
 import hla.rti1516e.*;
 import hla.rti1516e.encoding.EncoderFactory;
@@ -99,7 +99,7 @@ import java.util.Random;
  * In the demonstration, the first three modules are loaded as part of the federation creation
  * process, with the example federate providing the Soup-based extension when it joins.
  */
-public class ExampleFederate
+public class ClientFederate
 {
 	//----------------------------------------------------------
 	//                    STATIC VARIABLES
@@ -114,7 +114,7 @@ public class ExampleFederate
 	//                   INSTANCE VARIABLES
 	//----------------------------------------------------------
 	private RTIambassador rtiamb;
-	private ExampleFederateAmbassador fedamb;  // created when we connect
+	private ClientAmbassador fedamb;  // created when we connect
 	private HLAfloat64TimeFactory timeFactory; // set when we join
 	protected EncoderFactory encoderFactory;     // set when we join
 
@@ -136,7 +136,7 @@ public class ExampleFederate
 	 */
 	private void log( String message )
 	{
-		System.out.println( "ExampleFederate   : " + message );
+		System.out.println( "Client   : " + message );
 	}
 
 	/**
@@ -176,7 +176,7 @@ public class ExampleFederate
 		
 		// connect
 		log( "Connecting..." );
-		fedamb = new ExampleFederateAmbassador( this );
+		fedamb = new ClientAmbassador( this );
 		rtiamb.connect( fedamb, CallbackModel.HLA_EVOKED );
 
 		//////////////////////////////
@@ -215,7 +215,7 @@ public class ExampleFederate
 		};
 		
 		rtiamb.joinFederationExecution( federateName,            // name for the federate
-		                                "ExampleFederateType",   // federate type
+		                                "ClientType",   // federate type
 		                                "ExampleFederation",     // name of federation
 		                                joinModules );           // modules we want to add
 
@@ -538,7 +538,7 @@ public class ExampleFederate
 	public static void main( String[] args )
 	{
 		// get a federate name, use "exampleFederate" as default
-		String federateName = "exampleFederate";
+		String federateName = "client";
 		if( args.length != 0 )
 		{
 			federateName = args[0];
@@ -547,7 +547,7 @@ public class ExampleFederate
 		try
 		{
 			// run the example federate
-			new ExampleFederate().runFederate( federateName );
+			new ClientFederate().runFederate( federateName );
 		}
 		catch( Exception rtie )
 		{

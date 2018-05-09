@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<module external.linked.project.id="shop-hla:shop_hla" external.linked.project.path="$MODULE_DIR$/../.." external.root.project.path="$MODULE_DIR$/../.." external.system.id="GRADLE" external.system.module.group="pl.wat.msk.shop" external.system.module.type="sourceSet" external.system.module.version="0.0.1" type="JAVA_MODULE" version="4">
+  <component name="NewModuleRootManager" LANGUAGE_LEVEL="JDK_1_8">
+    <output url="file://$MODULE_DIR$/../../out/shop_hla/classes" />
+    <exclude-output />
+    <content url="file://$MODULE_DIR$/../../src">
+      <sourceFolder url="file://$MODULE_DIR$/../../src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/../../src/shop_hla/resources" type="java-resource" />
+    </content>
+    <orderEntry type="inheritedJdk" />
+    <orderEntry type="sourceFolder" forTests="false" />
+  </component>
+</module>

@@ -1,0 +1,30 @@
+apply plugin: 'java'
+apply plugin: 'idea'
+apply plugin: 'application'
+
+group = 'pl.wat.msk.shop'
+version = '0.0.1'
+sourceCompatibility = 1.8
+targetCompatibility = 1.8
+
+repositories {
+    mavenCentral()
+}
+
+configurations {
+    apt
+}
+
+dependencies {
+    compile files('C:\\Program Files (x86)\\Portico\\portico-2016.05.28\\lib\\portico.jar')
+    compileOnly 'org.projectlombok:lombok:1.16.20'
+    apt "org.projectlombok:lombok:1.16.20"
+}
+
+sourceSets {
+    shop_hla {
+        java {
+            srcDirs = ['src']
+        }
+    }
+}

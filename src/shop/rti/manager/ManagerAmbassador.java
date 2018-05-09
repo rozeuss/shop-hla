@@ -12,7 +12,7 @@
  *   (that goes for your lawyer as well)
  *
  */
-package federate.client;
+package shop.rti.manager;
 
 import hla.rti1516e.*;
 import hla.rti1516e.encoding.DecoderException;
@@ -23,10 +23,10 @@ import hla.rti1516e.time.HLAfloat64Time;
 
 /**
  * This class handles all incoming callbacks from the RTI regarding a particular
- * {@link ExampleFederate}. It will log information about any callbacks it
+ * {@link ManagerFederate}. It will log information about any callbacks it
  * receives, thus demonstrating how to deal with the provided callback information.
  */
-public class ExampleFederateAmbassador extends NullFederateAmbassador
+public class ManagerAmbassador extends NullFederateAmbassador
 {
 	//----------------------------------------------------------
 	//                    STATIC VARIABLES
@@ -35,16 +35,16 @@ public class ExampleFederateAmbassador extends NullFederateAmbassador
 	//----------------------------------------------------------
 	//                   INSTANCE VARIABLES
 	//----------------------------------------------------------
-	private ExampleFederate federate;
+	private ManagerFederate federate;
 
 	// these variables are accessible in the package
 	protected double federateTime        = 0.0;
 	protected double federateLookahead   = 1.0;
-	
+
 	protected boolean isRegulating       = false;
 	protected boolean isConstrained      = false;
 	protected boolean isAdvancing        = false;
-	
+
 	protected boolean isAnnounced        = false;
 	protected boolean isReadyToRun       = false;
 
@@ -52,7 +52,7 @@ public class ExampleFederateAmbassador extends NullFederateAmbassador
 	//                      CONSTRUCTORS
 	//----------------------------------------------------------
 
-	public ExampleFederateAmbassador( ExampleFederate federate )
+	public ManagerAmbassador(ManagerFederate federate )
 	{
 		this.federate = federate;
 	}
@@ -129,7 +129,7 @@ public class ExampleFederateAmbassador extends NullFederateAmbassador
 	public void announceSynchronizationPoint( String label, byte[] tag )
 	{
 		log( "Synchronization point announced: " + label );
-		if( label.equals(federate.client.ExampleFederate.READY_TO_RUN) )
+		if( label.equals(ManagerFederate.READY_TO_RUN) )
 			this.isAnnounced = true;
 	}
 
@@ -137,7 +137,7 @@ public class ExampleFederateAmbassador extends NullFederateAmbassador
 	public void federationSynchronized( String label, FederateHandleSet failed )
 	{
 		log( "Federation Synchronized: " + label );
-		if( label.equals(federate.client.ExampleFederate.READY_TO_RUN) )
+		if( label.equals(ManagerFederate.READY_TO_RUN) )
 			this.isReadyToRun = true;
 	}
 
@@ -168,11 +168,12 @@ public class ExampleFederateAmbassador extends NullFederateAmbassador
 	@Override
 	public void discoverObjectInstance( ObjectInstanceHandle theObject,
 	                                    ObjectClassHandle theObjectClass,
-	                                    String objectName )
-	    throws FederateInternalError
+	                                    String objectName ) throws FederateInternalError
 	{
 		log( "Discoverd Object: handle=" + theObject + ", classHandle=" +
 		     theObjectClass + ", name=" + objectName );
+		if(theObjectClass.equals(this.federate.discoverClientInteractionHandle))
+			this.federate.discoverClient(theObject);
 	}
 
 	@Override
@@ -209,51 +210,6 @@ public class ExampleFederateAmbassador extends NullFederateAmbassador
 	    throws FederateInternalError
 	{
 		StringBuilder builder = new StringBuilder( "Reflection for object:" );
-		
-		// print the handle
-		builder.append( " handle=" + theObject );
-		// print the tag
-		builder.append( ", tag=" + new String(tag) );
-		// print the time (if we have it) we'll get null if we are just receiving
-		// a forwarded call from the other reflect callback above
-		if( time != null )
-		{
-			builder.append( ", time=" + ((HLAfloat64Time)time).getValue() );
-		}
-		
-		// print the attribute information
-		builder.append( ", attributeCount=" + theAttributes.size() );
-		builder.append( "\n" );
-		for( AttributeHandle attributeHandle : theAttributes.keySet() )
-		{
-			// print the attibute handle
-			builder.append( "\tattributeHandle=" );
-
-			// if we're dealing with Flavor, decode into the appropriate enum value
-			if( attributeHandle.equals(federate.flavHandle) )
-			{
-				builder.append( attributeHandle );
-				builder.append( " (Flavor)    " );
-				builder.append( ", attributeValue=" );
-				builder.append( decodeFlavor(theAttributes.get(attributeHandle)) );
-			}
-			else if( attributeHandle.equals(federate.cupsHandle) )
-			{
-				builder.append( attributeHandle );
-				builder.append( " (NumberCups)" );
-				builder.append( ", attributeValue=" );
-				builder.append( decodeNumCups(theAttributes.get(attributeHandle)) );
-			}
-			else
-			{
-				builder.append( attributeHandle );
-				builder.append( " (Unknown)   " );
-			}
-			
-			builder.append( "\n" );
-		}
-		
-		log( builder.toString() );
 	}
 
 	@Override
@@ -289,40 +245,7 @@ public class ExampleFederateAmbassador extends NullFederateAmbassador
 	                                SupplementalReceiveInfo receiveInfo )
 	    throws FederateInternalError
 	{
-		StringBuilder builder = new StringBuilder( "Interaction Received:" );
-		
-		// print the handle
-		builder.append( " handle=" + interactionClass );
-		if( interactionClass.equals(federate.servedHandle) )
-		{
-			builder.append( " (DrinkServed)" );
-		}
-		
-		// print the tag
-		builder.append( ", tag=" + new String(tag) );
-		// print the time (if we have it) we'll get null if we are just receiving
-		// a forwarded call from the other reflect callback above
-		if( time != null )
-		{
-			builder.append( ", time=" + ((HLAfloat64Time)time).getValue() );
-		}
-		
-		// print the parameer information
-		builder.append( ", parameterCount=" + theParameters.size() );
-		builder.append( "\n" );
-		for( ParameterHandle parameter : theParameters.keySet() )
-		{
-			// print the parameter handle
-			builder.append( "\tparamHandle=" );
-			builder.append( parameter );
-			// print the parameter value
-			builder.append( ", paramValue=" );
-			builder.append( theParameters.get(parameter).length );
-			builder.append( " bytes" );
-			builder.append( "\n" );
-		}
 
-		log( builder.toString() );
 	}
 
 	@Override
@@ -335,7 +258,4 @@ public class ExampleFederateAmbassador extends NullFederateAmbassador
 		log( "Object Removed: handle=" + theObject );
 	}
 
-	//----------------------------------------------------------
-	//                     STATIC METHODS
-	//----------------------------------------------------------
 }
