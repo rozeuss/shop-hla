@@ -22,7 +22,7 @@ dependencies {
 }
 
 sourceSets {
-    shop_hla {
+    main {
         java {
             srcDirs = ['src']
         }

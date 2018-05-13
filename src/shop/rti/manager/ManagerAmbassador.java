@@ -15,11 +15,9 @@
 package shop.rti.manager;
 
 import hla.rti1516e.*;
-import hla.rti1516e.encoding.DecoderException;
-import hla.rti1516e.encoding.HLAinteger16BE;
-import hla.rti1516e.encoding.HLAinteger32BE;
 import hla.rti1516e.exceptions.FederateInternalError;
 import hla.rti1516e.time.HLAfloat64Time;
+import shop.utils.DecoderUtils;
 
 /**
  * This class handles all incoming callbacks from the RTI regarding a particular
@@ -36,6 +34,7 @@ public class ManagerAmbassador extends NullFederateAmbassador
 	//                   INSTANCE VARIABLES
 	//----------------------------------------------------------
 	private ManagerFederate federate;
+	protected boolean running = true;
 
 	// these variables are accessible in the package
 	protected double federateTime        = 0.0;
@@ -62,52 +61,9 @@ public class ManagerAmbassador extends NullFederateAmbassador
 	//----------------------------------------------------------
 	private void log( String message )
 	{
-		System.out.println( "FederateAmbassador: " + message );
-	}
-	
-	private String decodeFlavor( byte[] bytes )
-	{
-		HLAinteger32BE value = federate.encoderFactory.createHLAinteger32BE();
-		// decode
-		try
-		{
-			value.decode( bytes );
-		}
-		catch( DecoderException de )
-		{
-			return "Decoder Exception: "+de.getMessage();
-		}
-
-		switch( value.getValue() )
-		{
-			case 101:
-				return "Cola";
-			case 102:
-				return "Orange";
-			case 103:
-				return "RootBeer";
-			case 104:
-				return "Cream";
-			default:
-				return "Unknown";
-		}
+		System.out.println( "ManagerAmbassador: " + message );
 	}
 
-	private short decodeNumCups( byte[] bytes )
-	{
-		HLAinteger16BE value = federate.encoderFactory.createHLAinteger16BE();
-		// decode
-		try
-		{
-			value.decode( bytes );
-			return value.getValue();
-		}
-		catch( DecoderException de )
-		{
-			de.printStackTrace();
-			return 0;
-		}
-	}
 
 	//////////////////////////////////////////////////////////////////////////
 	////////////////////////// RTI Callback Methods //////////////////////////
@@ -170,10 +126,13 @@ public class ManagerAmbassador extends NullFederateAmbassador
 	                                    ObjectClassHandle theObjectClass,
 	                                    String objectName ) throws FederateInternalError
 	{
-		log( "Discoverd Object: handle=" + theObject + ", classHandle=" +
+		log( "Discovered Object: handle=" + theObject + ", classHandle=" +
 		     theObjectClass + ", name=" + objectName );
-		if(theObjectClass.equals(this.federate.discoverClientInteractionHandle))
+//		if(theObjectClass.equals(this.federate.discoverClientHandle)){
+//		TODO poprawic rozpoznawanie klasy
+			log("po discover");
 			this.federate.discoverClient(theObject);
+//		}
 	}
 
 	@Override
@@ -209,7 +168,47 @@ public class ManagerAmbassador extends NullFederateAmbassador
 	                                    SupplementalReflectInfo reflectInfo )
 	    throws FederateInternalError
 	{
-		StringBuilder builder = new StringBuilder( "Reflection for object:" );
+//		for(int i=0;i<federate.listaklient.size();i++)
+//		{
+			if(theObject.equals(federate.clients.get(0).getRtiHandler()))
+			{
+				int clientId=0;
+
+				StringBuilder builder = new StringBuilder( "Reflection for object:" );
+				builder.append( " handle=" + theObject );
+				builder.append( ", tag=" + new String(tag) + ", time=" + ((HLAfloat64Time)time).getValue() );
+
+				// print the attribute information
+				builder.append( ", attributeCount=" + theAttributes.size() );
+				builder.append( "\n" );
+				for( AttributeHandle attributeHandle : theAttributes.keySet() )
+				{
+					// print the attibute handle
+					builder.append( "\tattributeHandle=" );
+
+					if( attributeHandle.equals(federate.getClientIdHandle()) )
+					{
+						builder.append( attributeHandle );
+						builder.append( " id:" );
+						int i = DecoderUtils.decodeInt(federate.encoderFactory, theAttributes.getValueReference(attributeHandle));
+						builder.append( i );
+
+						clientId = i;
+					}
+					else
+					{
+						builder.append( attributeHandle );
+						builder.append( " (Unknown)   " );
+					}
+
+					builder.append( "\n" );
+				}
+
+				log( builder.toString() );
+
+				this.federate.updateClient(theObject, clientId);
+			}
+//		}
 	}
 
 	@Override
@@ -245,7 +244,14 @@ public class ManagerAmbassador extends NullFederateAmbassador
 	                                SupplementalReceiveInfo receiveInfo )
 	    throws FederateInternalError
 	{
+		StringBuilder builder = new StringBuilder( "Interaction Received:" );
 
+		builder.append( " handle=" + interactionClass );
+//		if( interactionClass.equals(federate.koniecsymulacjiHandle) )
+//		{
+//			builder.append( " (koniecsymulacji)" );
+//			this.federate.end_sim();
+//		}
 	}
 
 	@Override

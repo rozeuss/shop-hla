@@ -31,7 +31,7 @@ public class StatisticAmbassador extends NullFederateAmbassador {
 
     protected boolean isAnnounced = false;
     protected boolean isReadyToRun = false;
-    protected boolean isRunning = true;
+    protected boolean running = true;
     private StatisticFederate federate;
 
     public StatisticAmbassador(StatisticFederate federate) {
@@ -40,7 +40,7 @@ public class StatisticAmbassador extends NullFederateAmbassador {
 
 
     private void log(String message) {
-        System.out.println("StatisticFederateAmbassador: " + message);
+        System.out.println("StatisticAmbassador: " + message);
     }
 
 
@@ -125,42 +125,24 @@ public class StatisticAmbassador extends NullFederateAmbassador {
         StringBuilder builder = new StringBuilder("Interaction Received:");
 
 //       TODO
-        if (interactionClass == federate.openCheckoutInteractionHandle) {
-            HLAinteger32BE checkoutId = federate.encoderFactory.createHLAinteger32BE();
+//        if (interactionClass == federate.openCheckoutInteractionHandle) {
+            builder.append(" *interactionClass* " + interactionClass);
+            builder.append(" *theParameters* " + theParameters);
+            builder.append(" *tag* " + tag);
+            builder.append(" *sentOrdering* " + sentOrdering);
+            builder.append(" *theTransport* " + theTransport);
+            builder.append(" *time* " + time);
+            builder.append(" *receivedOrdering* " + receivedOrdering);
+            builder.append(" *receiveInfo* " + receiveInfo);
             log("Checkout has been opened.");
-        } else if (interactionClass.equals(federate.endSimulationInteractionHandle)) {
-            builder.append("END OF SIMULATION");
-        }
+//        } else if (interactionClass.equals(federate.endSimulationInteractionHandle)) {
+//            builder.append("END OF SIMULATION");
+//        } else {
+//            log( " działa ");
+//        }
 
-        // print the handle
-        builder.append(" handle=" + interactionClass);
-        if (interactionClass.equals(federate.openCheckoutInteractionHandle)) {
-            builder.append(" (DrinkServed)");
-        }
+        log( builder.toString() );
 
-        // print the tag
-        builder.append(", tag=" + new String(tag));
-        // print the time (if we have it) we'll get null if we are just receiving
-        // a forwarded call from the other reflect callback above
-        if (time != null) {
-            builder.append(", time=" + ((HLAfloat64Time) time).getValue());
-        }
-
-        // print the parameer information
-        builder.append(", parameterCount=" + theParameters.size());
-        builder.append("\n");
-        for (ParameterHandle parameter : theParameters.keySet()) {
-            // print the parameter handle
-            builder.append("\tparamHandle=");
-            builder.append(parameter);
-            // print the parameter value
-            builder.append(", paramValue=");
-            builder.append(theParameters.get(parameter).length);
-            builder.append(" bytes");
-            builder.append("\n");
-        }
-
-        log(builder.toString());
     }
 
     @Override

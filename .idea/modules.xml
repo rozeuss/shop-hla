@@ -4,7 +4,6 @@
     <modules>
       <module fileurl="file://$PROJECT_DIR$/shop-hla.iml" filepath="$PROJECT_DIR$/shop-hla.iml" />
       <module fileurl="file://$PROJECT_DIR$/.idea/modules/shop-hla_main.iml" filepath="$PROJECT_DIR$/.idea/modules/shop-hla_main.iml" group="shop-hla" />
-      <module fileurl="file://$PROJECT_DIR$/.idea/modules/shop-hla_shop_hla.iml" filepath="$PROJECT_DIR$/.idea/modules/shop-hla_shop_hla.iml" group="shop-hla" />
       <module fileurl="file://$PROJECT_DIR$/.idea/modules/shop-hla_test.iml" filepath="$PROJECT_DIR$/.idea/modules/shop-hla_test.iml" group="shop-hla" />
     </modules>
   </component>

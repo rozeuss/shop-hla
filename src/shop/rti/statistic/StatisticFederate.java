@@ -30,6 +30,7 @@ import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.ArrayList;
 
+//TODO mozna stworzyc klase Federate gdzie beda te duplikaty
 public class StatisticFederate {
 
     public static final String READY_TO_RUN = "ReadyToRun";
@@ -133,31 +134,23 @@ public class StatisticFederate {
             rtiamb.evokeMultipleCallbacks(0.1, 0.2);
 //            rtiamb.tick();
         }
-
-        enableTimePolicy();
-        log("Time Policy Enabled");
+//
+//        enableTimePolicy();
+//        log("Time Policy Enabled");
 
         publishAndSubscribe();
         log("Published and Subscribed");
 
-        while (fedamb.isRunning) {
+        while (fedamb.running) {
             rtiamb.evokeMultipleCallbacks(0.1, 0.2);
+//            advanceTime(1.0);
+//hla.rti1516e.exceptions.LogicalTimeAlreadyPassed: org.portico.lrc.compat.JFederationTimeAlreadyPassed: Time 1.0 has already passed
+
 //            TODO !!!!
 //            showStatistics();
 //            advanceTime(1.0);
         }
 
-        rtiamb.resignFederationExecution(ResignAction.DELETE_OBJECTS);
-        log("Resigned from Federation");
-
-        try {
-            rtiamb.destroyFederationExecution("ExampleFederation");
-            log("Destroyed Federation");
-        } catch (FederationExecutionDoesNotExist dne) {
-            log("No need to destroy federation, it doesn't exist");
-        } catch (FederatesCurrentlyJoined fcj) {
-            log("Didn't destroy federation, federates still joined");
-        }
     }
 
     public void addNewOpenedCheckout(int idKlient, boolean czyUprzywilejowany) {
