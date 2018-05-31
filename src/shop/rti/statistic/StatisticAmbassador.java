@@ -1,24 +1,10 @@
-/*
- *   Copyright 2012 The Portico Project
- *
- *   This file is part of portico.
- *
- *   portico is free software; you can redistribute it and/or modify
- *   it under the terms of the Common Developer and Distribution License (CDDL) 
- *   as published by Sun Microsystems. For more information see the LICENSE file.
- *   
- *   Use of this software is strictly AT YOUR OWN RISK!!!
- *   If something bad happens you do not have permission to come crying to me.
- *   (that goes for your lawyer as well)
- *
- */
 package shop.rti.statistic;
 
 import hla.rti1516e.*;
-import hla.rti1516e.encoding.HLAinteger32BE;
 import hla.rti1516e.exceptions.FederateInternalError;
-import hla.rti1516e.time.HLAfloat64Time;
 import shop.utils.TimeUtils;
+
+import java.util.Arrays;
 
 public class StatisticAmbassador extends NullFederateAmbassador {
     protected double federateTime = 0.0;
@@ -90,18 +76,59 @@ public class StatisticAmbassador extends NullFederateAmbassador {
         this.isAdvancing = false;
     }
 
+    @Override
+    public void reflectAttributeValues(ObjectInstanceHandle theObject,
+                                       AttributeHandleValueMap theAttributes,
+                                       byte[] tag,
+                                       OrderType sentOrder,
+                                       TransportationTypeHandle transport,
+                                       SupplementalReflectInfo reflectInfo)
+            throws FederateInternalError {
+        // just pass it on to the other method for printing purposes
+        // passing null as the time will let the other method know it
+        // it from us, not from the RTI
+        reflectAttributeValues(theObject,
+                theAttributes,
+                tag,
+                sentOrder,
+                transport,
+                null,
+                sentOrder,
+                reflectInfo);
+    }
 
     @Override
-    public void reflectAttributeValues( ObjectInstanceHandle theObject,
-                                        AttributeHandleValueMap theAttributes,
-                                        byte[] tag,
-                                        OrderType sentOrdering,
-                                        TransportationTypeHandle theTransport,
-                                        LogicalTime time,
-                                        OrderType receivedOrdering,
-                                        SupplementalReflectInfo reflectInfo )
+    public void reflectAttributeValues(ObjectInstanceHandle theObject,
+                                       AttributeHandleValueMap theAttributes,
+                                       byte[] tag,
+                                       OrderType sentOrdering,
+                                       TransportationTypeHandle theTransport,
+                                       LogicalTime time,
+                                       OrderType receivedOrdering,
+                                       SupplementalReflectInfo reflectInfo)
             throws FederateInternalError {
-// TODO konieczne do pracy z Obiektami
+        StringBuilder builder = new StringBuilder( "Reflection for object:" );
+
+        for (int i = 0; i < federate.queues.size(); i++) {
+            if (theObject.equals(federate.queues.get(i).getRtiHandler())) {
+                //TODO
+                this.federate.updateQueue();
+            }
+        }
+
+        for (int i = 0; i < federate.checkouts.size(); i++) {
+            if (theObject.equals(federate.checkouts.get(i).getRtiHandler())) {
+                //TODO
+                this.federate.updateCheckout();
+            }
+        }
+
+        for (int i = 0; i < federate.clients.size(); i++) {
+            if (theObject.equals(federate.clients.get(i).getRtiHandler())) {
+                //TODO
+                this.federate.updateClient();
+            }
+        }
     }
 
     @Override
@@ -123,26 +150,30 @@ public class StatisticAmbassador extends NullFederateAmbassador {
                                    OrderType receivedOrdering,
                                    SupplementalReceiveInfo receiveInfo) throws FederateInternalError {
         StringBuilder builder = new StringBuilder("Interaction Received:");
-
-//       TODO
-//        if (interactionClass == federate.openCheckoutInteractionHandle) {
-            builder.append(" *interactionClass* " + interactionClass);
-            builder.append(" *theParameters* " + theParameters);
-            builder.append(" *tag* " + tag);
-            builder.append(" *sentOrdering* " + sentOrdering);
-            builder.append(" *theTransport* " + theTransport);
-            builder.append(" *time* " + time);
-            builder.append(" *receivedOrdering* " + receivedOrdering);
-            builder.append(" *receiveInfo* " + receiveInfo);
+        builder.append(" *interactionClass* ").append(interactionClass);
+        builder.append(" *theParameters* ").append(theParameters);
+        builder.append(" *tag* ").append(Arrays.toString(tag));
+        builder.append(" *sentOrdering* ").append(sentOrdering);
+        builder.append(" *theTransport* ").append(theTransport);
+        builder.append(" *time* ").append(time);
+        builder.append(" *receivedOrdering* ").append(receivedOrdering);
+        builder.append(" *receiveInfo* ").append(receiveInfo);
+        if (interactionClass.equals(federate.openCheckoutInteractionHandle)) {
             log("Checkout has been opened.");
-//        } else if (interactionClass.equals(federate.endSimulationInteractionHandle)) {
-//            builder.append("END OF SIMULATION");
-//        } else {
-//            log( " działa ");
-//        }
-
-        log( builder.toString() );
-
+            //TODO
+        } else if (interactionClass.equals(federate.chooseQueueInteractionHandle)) {
+            builder.append("chooseQueueInteractionHandle");
+            //TODO
+        } else if (interactionClass.equals(federate.closeCheckoutInteractionHandle)) {
+            builder.append("closeCheckoutInteractionHandle");
+            //TODO
+        } else if (interactionClass.equals(federate.endServiceInteractionHandle)) {
+            builder.append("endServiceInteractionHandle");
+            //TODO
+        } else {
+            log(" UNDEFINED ");
+        }
+        log(builder.toString());
     }
 
     @Override
@@ -154,4 +185,19 @@ public class StatisticAmbassador extends NullFederateAmbassador {
         log("Object Removed: handle=" + theObject);
     }
 
+    @Override
+    public void discoverObjectInstance(ObjectInstanceHandle theObject,
+                                       ObjectClassHandle theObjectClass,
+                                       String objectName) throws FederateInternalError {
+        log("Discoverd Object: handle=" + theObject + ", classHandle=" + theObjectClass + ", name=" + objectName);
+        if (theObjectClass.equals(this.federate.clientObjectHandle)) {
+            this.federate.addNewClientObject(theObject);
+        }
+        if (theObjectClass.equals(this.federate.checkoutObjectHandle)) {
+            this.federate.addNewCheckoutObject(theObject);
+        }
+        if (theObjectClass.equals(this.federate.queueObjectHandle)) {
+            this.federate.addNewQueueObject(theObject);
+        }
+    }
 }
