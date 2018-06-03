@@ -12,6 +12,8 @@ import java.util.concurrent.atomic.AtomicInteger;
 @NoArgsConstructor
 public class Client {
 
+    public enum State {SHOPPING, IN_CHECKOUT, END}
+
     public static final int MAX_PRODUCTS = 30;
     public static final AtomicInteger count = new AtomicInteger(0);
 
@@ -20,8 +22,15 @@ public class Client {
     int numberOfProducts;
     private ObjectInstanceHandle rtiHandler;
 
+
     public Client(ObjectInstanceHandle rtiHandler) {
         this.rtiHandler = rtiHandler;
     }
 
+
+    public Client(int clientId, boolean isPrivileged, int numberOfProducts) {
+        this.clientId = clientId;
+        this.isPrivileged = isPrivileged;
+        this.numberOfProducts = numberOfProducts;
+    }
 }

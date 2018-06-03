@@ -19,6 +19,7 @@ import hla.rti1516e.encoding.EncoderFactory;
 import hla.rti1516e.exceptions.FederationExecutionAlreadyExists;
 import hla.rti1516e.exceptions.RTIexception;
 import hla.rti1516e.time.HLAfloat64Interval;
+import hla.rti1516e.time.HLAfloat64Time;
 import hla.rti1516e.time.HLAfloat64TimeFactory;
 import shop.object.Checkout;
 import shop.object.Client;
@@ -31,6 +32,7 @@ import java.io.InputStreamReader;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.ArrayList;
+import java.util.concurrent.TimeUnit;
 
 //TODO mozna stworzyc klase Federate gdzie beda te duplikaty
 @SuppressWarnings("Duplicates")
@@ -138,23 +140,31 @@ public class StatisticFederate {
         while (fedamb.isReadyToRun == false) {
             rtiamb.evokeMultipleCallbacks(0.1, 0.2);
         }
-//
-//        enableTimePolicy();
-//        log("Time Policy Enabled");
 
+        enableTimePolicy();
+        log("Time Policy Enabled");
+//
         publishAndSubscribe();
         log("Published and Subscribed");
 
         while (fedamb.running) {
+//            rtiamb.evokeMultipleCallbacks(0.1, 0.2);
+            TimeUnit.SECONDS.sleep(3);
+
+            advanceTime(1.0);
+            doThings();
             rtiamb.evokeMultipleCallbacks(0.1, 0.2);
-//            advanceTime(1.0);
+
 //hla.rti1516e.exceptions.LogicalTimeAlreadyPassed: org.portico.lrc.compat.JFederationTimeAlreadyPassed: Time 1.0 has already passed
 
 //            TODO !!!!
 //            showStatistics();
-//            advanceTime(1.0);
         }
 
+    }
+
+    private void doThings() {
+        HLAfloat64Time time = timeFactory.makeTime(fedamb.federateTime + fedamb.federateLookahead);
     }
 
     public void addNewOpenedCheckout(int idKlient, boolean czyUprzywilejowany) {

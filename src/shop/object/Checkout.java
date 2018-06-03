@@ -21,4 +21,10 @@ public class Checkout {
     public Checkout(ObjectInstanceHandle rtiHandler) {
         this.rtiHandler = rtiHandler;
     }
+
+    public Checkout(int checkoutId, int queueId, boolean open) {
+        this.checkoutId = checkoutId;
+        this.queueId = queueId;
+        this.open = open;
+    }
 }

@@ -21,30 +21,50 @@ import hla.rti1516e.exceptions.RTIexception;
 import hla.rti1516e.time.HLAfloat64Interval;
 import hla.rti1516e.time.HLAfloat64Time;
 import hla.rti1516e.time.HLAfloat64TimeFactory;
+import shop.object.Checkout;
+import shop.object.Client;
+import shop.object.Queue;
 
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.InputStreamReader;
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Optional;
+import java.util.Random;
+import java.util.concurrent.TimeUnit;
 
 public class QueueFederate {
 
     public static final String READY_TO_RUN = "ReadyToRun";
     protected EncoderFactory encoderFactory;
+    protected InteractionClassHandle openCheckoutInteractionHandle;
+    protected ParameterHandle openCheckoutCheckoutId;
+    protected InteractionClassHandle chooseQueueInteractionHandle;
+    protected ParameterHandle chooseQueueCheckoutId;
+    protected ParameterHandle chooseQueueClientId;
+    protected InteractionClassHandle endServiceInteractionHandle;
+    protected ParameterHandle endServiceCheckoutId;
+    protected ParameterHandle endServiceClientId;
+    protected ParameterHandle closeCheckoutCheckoutId;
+    protected InteractionClassHandle closeCheckoutInteractionHandle;
+    protected List<Checkout> checkouts = new ArrayList<>();
+    protected List<Queue> queues = new ArrayList<>();
+    protected List<Client> clients = new ArrayList<>();
+    protected ObjectClassHandle queueObjectHandle;
+    protected AttributeHandle queueMaxSize;
+    protected AttributeHandle queueCurrentSize;
+    protected AttributeHandle queueId;
+    protected ObjectClassHandle clientObjectHandle;
+    protected AttributeHandle clientIsPrivileged;
+    protected AttributeHandle clientNumberOfProducts;
+    protected AttributeHandle clientId;
+    Random random = new Random();
     private RTIambassador rtiamb;
     private QueueAmbassador fedamb;
     private HLAfloat64TimeFactory timeFactory;
-    private InteractionClassHandle openCheckoutInteractionHandle;
-    private ParameterHandle openCheckoutCheckoutId;
-    private InteractionClassHandle chooseQueueInteractionHandle;
-    private ParameterHandle chooseQueueCheckoutId;
-    private ParameterHandle chooseQueueClientId;
-    private InteractionClassHandle endServiceInteractionHandle;
-    private ParameterHandle endServiceCheckoutId;
-    private ParameterHandle endServiceClientId;
-    private ParameterHandle closeCheckoutCheckoutId;
-    private InteractionClassHandle closeCheckoutInteractionHandle;
 
     public static void main(String[] args) {
         String federateName = "queue";
@@ -122,17 +142,22 @@ public class QueueFederate {
         }
 
 
-//		enableTimePolicy();
-//		log( "Time Policy Enabled" );
+        enableTimePolicy();
+        log("Time Policy Enabled");
 
 
         publishAndSubscribe();
         log("Published and Subscribed");
 
+        createNewQueue();
+
         while (fedamb.running) {
-            sendInteraction();
+            TimeUnit.SECONDS.sleep(3);
+
             advanceTime(1.0); // TODO
-//            log( "Time Advanced to " + fedamb.federateTime );
+            doThings();
+            rtiamb.evokeMultipleCallbacks(0.1, 0.2);
+//            rtiamb.evokeMultipleCallbacks( 0.1, 0.2 );
 
         }
     }
@@ -150,6 +175,18 @@ public class QueueFederate {
     }
 
     private void publishAndSubscribe() throws RTIexception {
+        // register object kolejka
+        queueObjectHandle = rtiamb.getObjectClassHandle("HLAobjectRoot.Queue");
+        queueMaxSize = rtiamb.getAttributeHandle(queueObjectHandle, "maxSize");
+        queueCurrentSize = rtiamb.getAttributeHandle(queueObjectHandle, "currentSize");
+        queueId = rtiamb.getAttributeHandle(queueObjectHandle, "queueId");
+        AttributeHandleSet queueAttributes = rtiamb.getAttributeHandleSetFactory().create();
+        queueAttributes.add(queueMaxSize);
+        queueAttributes.add(queueCurrentSize);
+        queueAttributes.add(queueId);
+        rtiamb.publishObjectClassAttributes(queueObjectHandle, queueAttributes);
+        rtiamb.subscribeObjectClassAttributes(queueObjectHandle, queueAttributes);
+
         // otwarcie kasy
         openCheckoutInteractionHandle = rtiamb.getInteractionClassHandle("HLAinteractionRoot.OpenCheckout");
         openCheckoutCheckoutId = rtiamb.getParameterHandle(openCheckoutInteractionHandle, "checkoutId");
@@ -171,6 +208,18 @@ public class QueueFederate {
         closeCheckoutInteractionHandle = rtiamb.getInteractionClassHandle("HLAinteractionRoot.CloseCheckout");
         closeCheckoutCheckoutId = rtiamb.getParameterHandle(closeCheckoutInteractionHandle, "checkoutId");
         rtiamb.subscribeInteractionClass(closeCheckoutInteractionHandle);
+
+        //      discover object klient
+        clientObjectHandle = rtiamb.getObjectClassHandle("HLAobjectRoot.Client");
+        log("clientHandle id: " + clientObjectHandle);
+        clientIsPrivileged = rtiamb.getAttributeHandle(clientObjectHandle, "isPrivileged");
+        clientNumberOfProducts = rtiamb.getAttributeHandle(clientObjectHandle, "numberOfProducts");
+        clientId = rtiamb.getAttributeHandle(clientObjectHandle, "clientId");
+        AttributeHandleSet clientAttributes = rtiamb.getAttributeHandleSetFactory().create();
+        clientAttributes.add(clientIsPrivileged);
+        clientAttributes.add(clientNumberOfProducts);
+        clientAttributes.add(clientId);
+        rtiamb.subscribeObjectClassAttributes(clientObjectHandle, clientAttributes);
     }
 
     private void updateAttributeValues(ObjectInstanceHandle objectHandle) throws RTIexception {
@@ -186,20 +235,84 @@ public class QueueFederate {
         }
     }
 
-
     private void deleteObject(ObjectInstanceHandle handle) throws RTIexception {
         rtiamb.deleteObjectInstance(handle, generateTag());
     }
 
-    private void sendInteraction() throws RTIexception {
-    }
-
-    private short getTimeAsShort() {
-        return (short) fedamb.federateTime;
+    private void doThings() throws RTIexception {
+        HLAfloat64Time time = timeFactory.makeTime(fedamb.federateTime + fedamb.federateLookahead);
     }
 
     private byte[] generateTag() {
         return ("(timestamp) " + System.currentTimeMillis()).getBytes();
     }
 
+    public void createNewQueue() {
+        ObjectInstanceHandle objectInstanceHandle = null;
+        try {
+            objectInstanceHandle = registerObject();
+        } catch (RTIexception rtIexception) {
+            rtIexception.printStackTrace();
+        }
+//        Queue queue = new Queue(Queue.count.incrementAndGet(),
+//                random.nextInt(Queue.MAX_SIZE) + 1,
+//                Queue.INITIAL_SIZE,
+//                new ArrayList<>(),
+//                objectInstanceHandle);
+        Queue queue = new Queue(Queue.count.getAndIncrement(), random.nextInt(Queue.MAX_SIZE) + 1, Queue.INITIAL_SIZE);
+        queue.setRtiHandler(objectInstanceHandle);
+        queues.add(queue);
+        log("Created new queue");
+        System.out.println(queues);
+    }
+
+    private ObjectInstanceHandle registerObject() throws RTIexception {
+        return rtiamb.registerObjectInstance(queueObjectHandle);
+    }
+
+    public void addNewClientToQueue(int queueId, int clientId) {
+        //TODO uprzywilejowany poprawic
+        System.out.println("ADD NEW CLIENT TO QUEUE");
+        System.out.println(queues.get(0));
+        Optional<Client> client = clients.stream().filter(c -> c.getClientId() == clientId).findFirst();
+        if (client.isPresent()) {
+            Queue queue = queues.get(queueId);
+            if (!client.get().isPrivileged()) {
+                queue.setCurrentSize(queue.getCurrentSize() + 1);
+                queue.getClients().add(client.get());
+            } else {
+                queue.setCurrentSize(queue.getCurrentSize() + 1);
+                queue.getClients().add(0, client.get());
+            }
+        }
+        System.out.println(queues.get(0));
+    }
+
+    public void removeClientFromQueue(int checkoutId, int clientId) {
+        System.out.println("REMOVE CLIENT FROM QUEUE");
+        System.out.println(queues.get(0));
+        Queue queue = queues.get(checkoutId);
+        queue.getClients().removeIf(client -> client.getClientId() == clientId);
+        queue.setCurrentSize(queue.getCurrentSize() - 1);
+        System.out.println(queues.get(0));
+    }
+
+    public void closeCheckout(int checkoutId) {
+//        while (queues.isEmpty())
+// TODO
+    }
+
+    protected void updateClient(ObjectInstanceHandle handle, int clientId, boolean isPrivileged, int numberOfProducts) {
+        for (Client client : clients) {
+            if (client.getRtiHandler().equals(handle)) {
+                client.setClientId(clientId);
+                client.setPrivileged(isPrivileged);
+                client.setNumberOfProducts(numberOfProducts);
+            }
+        }
+    }
+
+    protected void discoverClient(ObjectInstanceHandle client) {
+        clients.add(new Client(client));
+    }
 }

@@ -14,10 +14,16 @@
  */
 package shop.rti.checkout;
 
+import hla.rti.jlc.EncodingHelpers;
 import hla.rti1516e.*;
 import hla.rti1516e.exceptions.FederateInternalError;
 import hla.rti1516e.time.HLAfloat64Time;
+import shop.utils.DecoderUtils;
+import shop.utils.FederateTag;
 
+import java.util.Arrays;
+
+@SuppressWarnings("Duplicates")
 public class CheckoutAmbassador extends NullFederateAmbassador {
 
     protected boolean running = true;
@@ -86,6 +92,9 @@ public class CheckoutAmbassador extends NullFederateAmbassador {
     public void discoverObjectInstance(ObjectInstanceHandle theObject,
                                        ObjectClassHandle theObjectClass,
                                        String objectName) throws FederateInternalError {
+        if (theObjectClass.equals(this.federate.clientObjectHandle)) {
+            this.federate.discoverClient(theObject);
+        }
     }
 
     @Override
@@ -112,7 +121,52 @@ public class CheckoutAmbassador extends NullFederateAmbassador {
                                        LogicalTime time, OrderType receivedOrdering,
                                        SupplementalReflectInfo reflectInfo)
             throws FederateInternalError {
+        //TODO EncodingHelpers nie jest ze standardu ieee
+        String decodedTag = EncodingHelpers.decodeString(tag);
+        if (FederateTag.CLIENT.name().equals(decodedTag)) {
 
+            for (int i = 0; i < federate.clients.size(); i++) {
+                if (theObject.equals(federate.clients.get(i).getRtiHandler())) {
+                    int clientId = 0;
+                    int numberOfProducts = 0;
+                    boolean isPrivileged = false;
+                    StringBuilder builder = new StringBuilder("Reflection for object:");
+                    builder.append(" handle=" + theObject);
+                    builder.append(", attributeCount=" + theAttributes.size());
+                    builder.append("\n");
+                    for (AttributeHandle attributeHandle : theAttributes.keySet()) {
+                        builder.append("\tattributeHandle=");
+                        if (attributeHandle.equals(federate.clientId)) {
+                            builder.append(attributeHandle);
+                            builder.append(" id:");
+                            int val = DecoderUtils.decodeInt(federate.encoderFactory, theAttributes.getValueReference(attributeHandle));
+                            builder.append(val);
+                            clientId = val;
+                        } else if (attributeHandle.equals(federate.clientNumberOfProducts)) {
+                            builder.append(attributeHandle);
+                            builder.append(" numberOfProducts:");
+                            int val = DecoderUtils.decodeInt(federate.encoderFactory, theAttributes.getValueReference(attributeHandle));
+                            builder.append(val);
+                            numberOfProducts = val;
+                        } else if (attributeHandle.equals(federate.clientIsPrivileged)) {
+                            builder.append(attributeHandle);
+                            builder.append(" isPrivileged:");
+                            boolean val = DecoderUtils.decodeBoolean(federate.encoderFactory, theAttributes.getValueReference(attributeHandle));
+                            builder.append(val);
+                            isPrivileged = val;
+                        } else {
+                            builder.append(attributeHandle);
+                            builder.append(" (Unknown)   ");
+                        }
+
+                        builder.append("\n");
+                    }
+//                    log(builder.toString());
+                    this.federate.updateClient(theObject, clientId, isPrivileged, numberOfProducts);
+                }
+            }
+
+        }
 
     }
 
@@ -136,7 +190,30 @@ public class CheckoutAmbassador extends NullFederateAmbassador {
                                    byte[] tag, OrderType sentOrdering, TransportationTypeHandle theTransport,
                                    LogicalTime time, OrderType receivedOrdering, SupplementalReceiveInfo receiveInfo)
             throws FederateInternalError {
-
+        StringBuilder builder = new StringBuilder("Interaction Received:");
+        builder.append(" *interactionClass* ").append(interactionClass);
+        builder.append(" *theParameters* ").append(theParameters);
+        builder.append(" *tag* ").append(Arrays.toString(tag));
+        builder.append(" *sentOrdering* ").append(sentOrdering);
+        builder.append(" *theTransport* ").append(theTransport);
+        builder.append(" *time* ").append(time);
+        builder.append(" *receivedOrdering* ").append(receivedOrdering);
+        builder.append(" *receiveInfo* ").append(receiveInfo);
+        if (interactionClass.equals(federate.openCheckoutInteractionHandle)) {
+            federate.createNewCheckout();
+        } else if (interactionClass.equals(federate.startServiceInteractionHandle)) {
+            builder.append("startServiceInteractionHandle");
+            //TODO
+        } else if (interactionClass.equals(federate.closeCheckoutInteractionHandle)) {
+            builder.append("closeCheckoutInteractionHandle");
+            //TODO
+        } else if (interactionClass.equals(federate.endServiceInteractionHandle)) {
+            builder.append("endServiceInteractionHandle");
+            //TODO
+        } else {
+            log(" UNDEFINED ");
+        }
+        log(builder.toString());
     }
 
     @Override

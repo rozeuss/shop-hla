@@ -1,23 +1,13 @@
-/*
- *   Copyright 2012 The Portico Project
- *
- *   This file is part of portico.
- *
- *   portico is free software; you can redistribute it and/or modify
- *   it under the terms of the Common Developer and Distribution License (CDDL) 
- *   as published by Sun Microsystems. For more information see the LICENSE file.
- *   
- *   Use of this software is strictly AT YOUR OWN RISK!!!
- *   If something bad happens you do not have permission to come crying to me.
- *   (that goes for your lawyer as well)
- *
- */
+
 package shop.rti.manager;
 
+import hla.rti.jlc.EncodingHelpers;
 import hla.rti1516e.*;
 import hla.rti1516e.exceptions.FederateInternalError;
 import hla.rti1516e.time.HLAfloat64Time;
+import shop.object.Client;
 import shop.utils.DecoderUtils;
+import shop.utils.FederateTag;
 
 /**
  * This class handles all incoming callbacks from the RTI regarding a particular
@@ -115,12 +105,8 @@ public class ManagerAmbassador extends NullFederateAmbassador {
         log("Discovered Object: handle=" + theObject + ", classHandle=" +
                 theObjectClass + ", name=" + objectName);
         if (theObjectClass.equals(this.federate.clientObjectHandle)) {
-
             this.federate.discoverClient(theObject);
-
         }
-        this.federate.discoverClient(theObject);
-
         log("po discover");
 
     }
@@ -156,43 +142,57 @@ public class ManagerAmbassador extends NullFederateAmbassador {
                                        OrderType receivedOrdering,
                                        SupplementalReflectInfo reflectInfo)
             throws FederateInternalError {
-//		for(int i=0;i<federate.listaklient.size();i++)
-//		{
-        log("reflectAttributeValues");
-        if (theObject.equals(federate.clientObjectHandle)) {
-            int clientId = 0;
+        //TODO EncodingHelpers nie jest ze standardu ieee
+        String decodedTag = EncodingHelpers.decodeString(tag);
+        if (FederateTag.CLIENT.name().equals(decodedTag)) {
 
-            StringBuilder builder = new StringBuilder("Reflection for object:");
-            builder.append(" handle=" + theObject);
-            builder.append(", tag=" + new String(tag) + ", time=" + ((HLAfloat64Time) time).getValue());
+            for (int i = 0; i < federate.clients.size(); i++) {
+                if (theObject.equals(federate.clients.get(i).getRtiHandler())) {
+                    int clientId = 0;
+                    int numberOfProducts = 0;
+                    boolean isPrivileged = false;
+                    StringBuilder builder = new StringBuilder("Reflection for object:");
+                    builder.append(" handle=" + theObject);
+                    builder.append(", attributeCount=" + theAttributes.size());
+                    builder.append("\n");
+                    for (AttributeHandle attributeHandle : theAttributes.keySet()) {
+                        builder.append("\tattributeHandle=");
+                        if (attributeHandle.equals(federate.clientId)) {
+                            builder.append(attributeHandle);
+                            builder.append(" id:");
+                            int val = DecoderUtils.decodeInt(federate.encoderFactory, theAttributes.getValueReference(attributeHandle));
+                            builder.append(val);
+                            clientId = val;
+                        } else if(attributeHandle.equals(federate.clientNumberOfProducts)){
+                            builder.append(attributeHandle);
+                            builder.append(" numberOfProducts:");
+                            int val = DecoderUtils.decodeInt(federate.encoderFactory, theAttributes.getValueReference(attributeHandle));
+                            builder.append(val);
+                            numberOfProducts = val;
+                        } else if(attributeHandle.equals(federate.clientIsPrivileged)){
+                            builder.append(attributeHandle);
+                            builder.append(" isPrivileged:");
+                            boolean val = DecoderUtils.decodeBoolean(federate.encoderFactory, theAttributes.getValueReference(attributeHandle));
+                            builder.append(val);
+                            isPrivileged = val;
+                        } else {
+                            builder.append(attributeHandle);
+                            builder.append(" (Unknown)   ");
+                        }
 
-            // print the attribute information
-            builder.append(", attributeCount=" + theAttributes.size());
-            builder.append("\n");
-            for (AttributeHandle attributeHandle : theAttributes.keySet()) {
-                // print the attibute handle
-                builder.append("\tattributeHandle=");
+                        builder.append("\n");
+                    }
 
-                if (attributeHandle.equals(federate.clientId)) {
-                    builder.append(attributeHandle);
-                    builder.append(" id:");
-                    int i = DecoderUtils.decodeInt(federate.encoderFactory, theAttributes.getValueReference(attributeHandle));
-                    builder.append(i);
+                    log(builder.toString());
 
-                    clientId = i;
-                } else {
-                    builder.append(attributeHandle);
-                    builder.append(" (Unknown)   ");
+                    this.federate.updateClient(theObject, clientId, isPrivileged, numberOfProducts);
                 }
-
-                builder.append("\n");
             }
 
-            log(builder.toString());
+        } else if(FederateTag.CHECKOUT.name().equals(decodedTag)) {
 
-            this.federate.updateClient(theObject, clientId);
         }
-//		}
+
     }
 
     @Override
@@ -228,7 +228,6 @@ public class ManagerAmbassador extends NullFederateAmbassador {
             throws FederateInternalError {
         StringBuilder builder = new StringBuilder("Interaction Received:");
         log(builder.toString());
-        log("halooo");
 
     }
 

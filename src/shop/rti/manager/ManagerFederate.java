@@ -10,6 +10,7 @@ import hla.rti1516e.time.HLAfloat64TimeFactory;
 import shop.object.Checkout;
 import shop.object.Client;
 import shop.object.Queue;
+import shop.utils.InteractionTag;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -17,6 +18,7 @@ import java.io.InputStreamReader;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 
@@ -25,8 +27,8 @@ public class ManagerFederate {
 
     public static final String READY_TO_RUN = "ReadyToRun";
     protected EncoderFactory encoderFactory;
-    protected ArrayList<Client> clients = new ArrayList<>();
-    protected ArrayList<Checkout> checkouts = new ArrayList<>();
+    protected List<Client> clients = new ArrayList<>();
+    protected List<Checkout> checkouts = new ArrayList<>();
     protected ObjectClassHandle clientObjectHandle;
     protected AttributeHandle clientIsPrivileged;
     protected AttributeHandle clientNumberOfProducts;
@@ -66,7 +68,6 @@ public class ManagerFederate {
             e.printStackTrace();
         }
     }
-
 
     public void runFederate(String federateName) throws Exception {
 
@@ -116,22 +117,24 @@ public class ManagerFederate {
         while (fedamb.isReadyToRun == false) {
             rtiamb.evokeMultipleCallbacks(0.1, 0.2);
         }
-
-
-//		enableTimePolicy();
-//		log( "Time Policy Enabled" );
-
-
+//
+//
+		enableTimePolicy();
+		log( "Time Policy Enabled" );
         publishAndSubscribe();
         log("Published and Subscribed");
 
 
         while (fedamb.running) {
-            TimeUnit.SECONDS.sleep(2);
-            log("XD?");
-            sendInteraction();
-//            advanceTime(1.0); // TODO
-//            log( "Time Advanced to " + fedamb.federateTime );
+            TimeUnit.SECONDS.sleep(3);
+
+
+            advanceTime(1.0);
+            doThings();
+            rtiamb.evokeMultipleCallbacks(0.1, 0.2);
+
+//            rtiamb.evokeMultipleCallbacks( 0.1, 0.2 );
+
         }
     }
 
@@ -189,12 +192,9 @@ public class ManagerFederate {
     }
 
     private void advanceTime(double timestep) throws RTIexception {
-
         fedamb.isAdvancing = true;
         HLAfloat64Time time = timeFactory.makeTime(fedamb.federateTime + timestep);
         rtiamb.timeAdvanceRequest(time);
-
-
         while (fedamb.isAdvancing) {
             rtiamb.evokeMultipleCallbacks(0.1, 0.2);
         }
@@ -204,46 +204,39 @@ public class ManagerFederate {
         rtiamb.deleteObjectInstance(handle, generateTag());
     }
 
-    private void sendInteraction() throws RTIexception {
-//        sendOpenCheckoutInteraction(999);
+    private void doThings() throws RTIexception {
+        HLAfloat64Time time = timeFactory.makeTime( fedamb.federateTime+fedamb.federateLookahead );
         int openedCheckouts = checkouts.size();
-        for (Client client : clients) {
-            log(client.toString());
-        }
         // 10 ludzi na 1 kolejke
         if (openedCheckouts * 10 < clients.size()) {
             Optional<Checkout> closedCheckout = checkouts.stream().filter(checkout -> !checkout.isOpen()).findFirst();
             if (!closedCheckout.isPresent()) {
-                Checkout checkout = new Checkout(Checkout.count.incrementAndGet(),
-                        Queue.count.incrementAndGet(), true, null);
+                Checkout checkout = new Checkout(Checkout.count.getAndIncrement(),
+                        Queue.count.getAndIncrement(), true, null);
                 checkouts.add(checkout);
-                sendOpenCheckoutInteraction(checkout.getCheckoutId());
+                sendOpenCheckoutInteraction(checkout.getCheckoutId(), time);
                 log("SEND INTERACTION: Open Checkout (new checkout)");
             } else {
-                Checkout checkout = checkouts.get(closedCheckout.get().getCheckoutId());
-                checkout.setOpen(true);
-                sendOpenCheckoutInteraction(closedCheckout.get().getQueueId());
+                closedCheckout.get().setOpen(true);
+                sendOpenCheckoutInteraction(closedCheckout.get().getQueueId(), time);
+                log("SEND INTERACTION: Open Checkout (existing)");
             }
-        } else if (openedCheckouts > 0){
-            Checkout checkout = checkouts.get(Checkout.count.get());
-            checkout.setOpen(false);
-            sendCloseCheckoutInteraction(checkout.getCheckoutId());
-            log("SEND INTERACTION: Open Checkout");
+            //TODO zamkniecie kasy
         }
     }
 
-    private void sendCloseCheckoutInteraction(int checkoutId) throws RTIexception {
+    private void sendCloseCheckoutInteraction(int checkoutId, HLAfloat64Time time) throws RTIexception {
         ParameterHandleValueMap parameters = rtiamb.getParameterHandleValueMapFactory().create(1);
         ParameterHandle idHandle = rtiamb.getParameterHandle(closeCheckoutInteractionHandle, "checkoutId");
         parameters.put(idHandle, encoderFactory.createHLAinteger32BE(checkoutId).toByteArray());
-        rtiamb.sendInteraction(closeCheckoutInteractionHandle, parameters, "CLOSE CHECKOUT".getBytes());
+        rtiamb.sendInteraction(closeCheckoutInteractionHandle, parameters, InteractionTag.CLOSE_CHECKOUT.toString().getBytes(), time);
     }
 
-    private void sendOpenCheckoutInteraction(int checkoutId) throws RTIexception {
+    private void sendOpenCheckoutInteraction(int checkoutId, HLAfloat64Time time) throws RTIexception {
         ParameterHandleValueMap parameters = rtiamb.getParameterHandleValueMapFactory().create(1);
         ParameterHandle idHandle = rtiamb.getParameterHandle(openCheckoutInteractionHandle, "checkoutId");
         parameters.put(idHandle, encoderFactory.createHLAinteger32BE(checkoutId).toByteArray());
-        rtiamb.sendInteraction(openCheckoutInteractionHandle, parameters, "OPEN CHECKOUT".getBytes());
+        rtiamb.sendInteraction(openCheckoutInteractionHandle, parameters, InteractionTag.OPEN_CHECKOUT.toString().getBytes(), time);
     }
 
     private byte[] generateTag() {
@@ -258,8 +251,15 @@ public class ManagerFederate {
         clients.stream().forEach(System.out::println);
     }
 
-    protected void updateClient(ObjectInstanceHandle client, int id) {
-        log(client.toString());
+    protected void updateClient(ObjectInstanceHandle handle, int clientId, boolean isPrivileged, int numberOfProducts) {
+        for (Client client : clients) {
+            if (client.getRtiHandler().equals(handle)) {
+                client.setClientId(clientId);
+                client.setPrivileged(isPrivileged);
+                client.setNumberOfProducts(numberOfProducts);
+            }
+        }
+        log(handle.toString());
     }
 
 }
