@@ -21,7 +21,7 @@ public class Client {
     boolean isPrivileged;
     int numberOfProducts;
     private ObjectInstanceHandle rtiHandler;
-
+    boolean waitingInQueue;
 
     public Client(ObjectInstanceHandle rtiHandler) {
         this.rtiHandler = rtiHandler;

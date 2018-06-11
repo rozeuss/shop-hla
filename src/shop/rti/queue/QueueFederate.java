@@ -24,18 +24,16 @@ import hla.rti1516e.time.HLAfloat64TimeFactory;
 import shop.object.Checkout;
 import shop.object.Client;
 import shop.object.Queue;
+import shop.utils.DecoderUtils;
 
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.InputStreamReader;
 import java.net.MalformedURLException;
 import java.net.URL;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Optional;
-import java.util.Random;
-import java.util.concurrent.TimeUnit;
+import java.util.*;
 
+@SuppressWarnings("Duplicates")
 public class QueueFederate {
 
     public static final String READY_TO_RUN = "ReadyToRun";
@@ -53,6 +51,7 @@ public class QueueFederate {
     protected List<Checkout> checkouts = new ArrayList<>();
     protected List<Queue> queues = new ArrayList<>();
     protected List<Client> clients = new ArrayList<>();
+    protected Map<ObjectInstanceHandle, ObjectClassHandle> instanceClassMap = new HashMap<>();
     protected ObjectClassHandle queueObjectHandle;
     protected AttributeHandle queueMaxSize;
     protected AttributeHandle queueCurrentSize;
@@ -152,11 +151,13 @@ public class QueueFederate {
         createNewQueue();
 
         while (fedamb.running) {
-            TimeUnit.SECONDS.sleep(3);
+//            TimeUnit.SECONDS.sleep(3);
 
             advanceTime(1.0); // TODO
+            log("Time Advanced to " + fedamb.federateTime);
+
             doThings();
-            rtiamb.evokeMultipleCallbacks(0.1, 0.2);
+//            rtiamb.evokeMultipleCallbacks(0.1, 0.2);
 //            rtiamb.evokeMultipleCallbacks( 0.1, 0.2 );
 
         }
@@ -211,7 +212,6 @@ public class QueueFederate {
 
         //      discover object klient
         clientObjectHandle = rtiamb.getObjectClassHandle("HLAobjectRoot.Client");
-        log("clientHandle id: " + clientObjectHandle);
         clientIsPrivileged = rtiamb.getAttributeHandle(clientObjectHandle, "isPrivileged");
         clientNumberOfProducts = rtiamb.getAttributeHandle(clientObjectHandle, "numberOfProducts");
         clientId = rtiamb.getAttributeHandle(clientObjectHandle, "clientId");
@@ -222,8 +222,12 @@ public class QueueFederate {
         rtiamb.subscribeObjectClassAttributes(clientObjectHandle, clientAttributes);
     }
 
-    private void updateAttributeValues(ObjectInstanceHandle objectHandle) throws RTIexception {
-
+    protected void updateQueueAttributeValues(Queue queue, HLAfloat64Time time) throws RTIexception {
+        AttributeHandleValueMap attributes = rtiamb.getAttributeHandleValueMapFactory().create(3);
+        attributes.put(queueId, DecoderUtils.encodeInt(encoderFactory, queue.getQueueId()));
+        attributes.put(queueCurrentSize, DecoderUtils.encodeInt(encoderFactory, queue.getCurrentSize()));
+        attributes.put(queueMaxSize, DecoderUtils.encodeInt(encoderFactory, queue.getMaxSize()));
+        rtiamb.updateAttributeValues(queue.getRtiHandler(), attributes, generateTag(), time);
     }
 
     private void advanceTime(double timestep) throws RTIexception {
@@ -241,6 +245,12 @@ public class QueueFederate {
 
     private void doThings() throws RTIexception {
         HLAfloat64Time time = timeFactory.makeTime(fedamb.federateTime + fedamb.federateLookahead);
+//        for (Queue queue : queues) {
+//            updateQueueAttributeValues(queue, time);
+//        }
+        for (Queue queue : queues) {
+            updateQueueAttributeValues(queue, time);
+        }
     }
 
     private byte[] generateTag() {
@@ -272,7 +282,7 @@ public class QueueFederate {
 
     public void addNewClientToQueue(int queueId, int clientId) {
         //TODO uprzywilejowany poprawic
-        System.out.println("ADD NEW CLIENT TO QUEUE");
+        System.out.println("ADD NEW CLIENT TO QUEUE: (" + clientId + ")");
         System.out.println(queues.get(0));
         Optional<Client> client = clients.stream().filter(c -> c.getClientId() == clientId).findFirst();
         if (client.isPresent()) {
@@ -290,10 +300,14 @@ public class QueueFederate {
 
     public void removeClientFromQueue(int checkoutId, int clientId) {
         System.out.println("REMOVE CLIENT FROM QUEUE");
+        System.out.println("REMOVE CLIENT ID: " + clientId);
         System.out.println(queues.get(0));
         Queue queue = queues.get(checkoutId);
-        queue.getClients().removeIf(client -> client.getClientId() == clientId);
-        queue.setCurrentSize(queue.getCurrentSize() - 1);
+//        queue.getClients().removeIf(client -> client.getClientId() == clientId);
+        Client removed = queue.getClients().remove(0);
+        if (removed != null) {
+            queue.setCurrentSize(queue.getCurrentSize() - 1);
+        }
         System.out.println(queues.get(0));
     }
 
@@ -311,6 +325,7 @@ public class QueueFederate {
             }
         }
     }
+
 
     protected void discoverClient(ObjectInstanceHandle client) {
         clients.add(new Client(client));

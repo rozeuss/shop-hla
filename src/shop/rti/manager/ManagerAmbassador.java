@@ -1,19 +1,12 @@
-
 package shop.rti.manager;
 
 import hla.rti.jlc.EncodingHelpers;
 import hla.rti1516e.*;
 import hla.rti1516e.exceptions.FederateInternalError;
 import hla.rti1516e.time.HLAfloat64Time;
-import shop.object.Client;
 import shop.utils.DecoderUtils;
-import shop.utils.FederateTag;
 
-/**
- * This class handles all incoming callbacks from the RTI regarding a particular
- * {@link ManagerFederate}. It will log information about any callbacks it
- * receives, thus demonstrating how to deal with the provided callback information.
- */
+@SuppressWarnings("Duplicates")
 public class ManagerAmbassador extends NullFederateAmbassador {
     //----------------------------------------------------------
     //                    STATIC VARIABLES
@@ -104,10 +97,11 @@ public class ManagerAmbassador extends NullFederateAmbassador {
                                        String objectName) throws FederateInternalError {
         log("Discovered Object: handle=" + theObject + ", classHandle=" +
                 theObjectClass + ", name=" + objectName);
+        this.federate.instanceClassMap.put(theObject, theObjectClass);
+
         if (theObjectClass.equals(this.federate.clientObjectHandle)) {
             this.federate.discoverClient(theObject);
         }
-        log("po discover");
 
     }
 
@@ -144,7 +138,7 @@ public class ManagerAmbassador extends NullFederateAmbassador {
             throws FederateInternalError {
         //TODO EncodingHelpers nie jest ze standardu ieee
         String decodedTag = EncodingHelpers.decodeString(tag);
-        if (FederateTag.CLIENT.name().equals(decodedTag)) {
+        if (federate.instanceClassMap.get(theObject).equals(federate.clientObjectHandle)) {
 
             for (int i = 0; i < federate.clients.size(); i++) {
                 if (theObject.equals(federate.clients.get(i).getRtiHandler())) {
@@ -163,13 +157,13 @@ public class ManagerAmbassador extends NullFederateAmbassador {
                             int val = DecoderUtils.decodeInt(federate.encoderFactory, theAttributes.getValueReference(attributeHandle));
                             builder.append(val);
                             clientId = val;
-                        } else if(attributeHandle.equals(federate.clientNumberOfProducts)){
+                        } else if (attributeHandle.equals(federate.clientNumberOfProducts)) {
                             builder.append(attributeHandle);
                             builder.append(" numberOfProducts:");
                             int val = DecoderUtils.decodeInt(federate.encoderFactory, theAttributes.getValueReference(attributeHandle));
                             builder.append(val);
                             numberOfProducts = val;
-                        } else if(attributeHandle.equals(federate.clientIsPrivileged)){
+                        } else if (attributeHandle.equals(federate.clientIsPrivileged)) {
                             builder.append(attributeHandle);
                             builder.append(" isPrivileged:");
                             boolean val = DecoderUtils.decodeBoolean(federate.encoderFactory, theAttributes.getValueReference(attributeHandle));
@@ -189,7 +183,8 @@ public class ManagerAmbassador extends NullFederateAmbassador {
                 }
             }
 
-        } else if(FederateTag.CHECKOUT.name().equals(decodedTag)) {
+        } else if (federate.instanceClassMap.get(theObject).equals(federate.clientObjectHandle)) {
+
 
         }
 
@@ -228,7 +223,6 @@ public class ManagerAmbassador extends NullFederateAmbassador {
             throws FederateInternalError {
         StringBuilder builder = new StringBuilder("Interaction Received:");
         log(builder.toString());
-
     }
 
     @Override

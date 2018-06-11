@@ -19,7 +19,6 @@ import hla.rti1516e.*;
 import hla.rti1516e.exceptions.FederateInternalError;
 import hla.rti1516e.time.HLAfloat64Time;
 import shop.utils.DecoderUtils;
-import shop.utils.FederateTag;
 
 import java.util.Arrays;
 
@@ -94,6 +93,7 @@ public class QueueAmbassador extends NullFederateAmbassador {
                                        String objectName) throws FederateInternalError {
         log("Discovered Object: handle=" + theObject + ", classHandle=" +
                 theObjectClass + ", name=" + objectName);
+        this.federate.instanceClassMap.put(theObject, theObjectClass);
         if (theObjectClass.equals(this.federate.clientObjectHandle)) {
             this.federate.discoverClient(theObject);
         }
@@ -125,7 +125,9 @@ public class QueueAmbassador extends NullFederateAmbassador {
             throws FederateInternalError {
         //TODO EncodingHelpers nie jest ze standardu ieee
         String decodedTag = EncodingHelpers.decodeString(tag);
-        if (FederateTag.CLIENT.name().equals(decodedTag)) {
+
+
+        if (federate.instanceClassMap.get(theObject).equals(federate.clientObjectHandle)) {
 
             for (int i = 0; i < federate.clients.size(); i++) {
                 if (theObject.equals(federate.clients.get(i).getRtiHandler())) {

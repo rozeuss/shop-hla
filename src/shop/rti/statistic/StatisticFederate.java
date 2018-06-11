@@ -32,9 +32,9 @@ import java.io.InputStreamReader;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.ArrayList;
-import java.util.concurrent.TimeUnit;
+import java.util.HashMap;
+import java.util.Map;
 
-//TODO mozna stworzyc klase Federate gdzie beda te duplikaty
 @SuppressWarnings("Duplicates")
 public class StatisticFederate {
 
@@ -58,6 +58,7 @@ public class StatisticFederate {
     protected AttributeHandle checkoutId;
     protected AttributeHandle checkoutQueueId;
 
+    protected Map<ObjectInstanceHandle, ObjectClassHandle> instanceClassMap = new HashMap<>();
     protected EncoderFactory encoderFactory;
     protected ArrayList<Checkout> checkouts = new ArrayList<>();
     protected ArrayList<Queue> queues = new ArrayList<>();
@@ -148,15 +149,12 @@ public class StatisticFederate {
         log("Published and Subscribed");
 
         while (fedamb.running) {
-//            rtiamb.evokeMultipleCallbacks(0.1, 0.2);
-            TimeUnit.SECONDS.sleep(3);
 
             advanceTime(1.0);
+            log("Time Advanced to " + fedamb.federateTime);
+
             doThings();
-            rtiamb.evokeMultipleCallbacks(0.1, 0.2);
-
 //hla.rti1516e.exceptions.LogicalTimeAlreadyPassed: org.portico.lrc.compat.JFederationTimeAlreadyPassed: Time 1.0 has already passed
-
 //            TODO !!!!
 //            showStatistics();
         }

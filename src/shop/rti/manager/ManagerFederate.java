@@ -10,17 +10,13 @@ import hla.rti1516e.time.HLAfloat64TimeFactory;
 import shop.object.Checkout;
 import shop.object.Client;
 import shop.object.Queue;
-import shop.utils.InteractionTag;
 
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.InputStreamReader;
 import java.net.MalformedURLException;
 import java.net.URL;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Optional;
-import java.util.concurrent.TimeUnit;
+import java.util.*;
 
 @SuppressWarnings("Duplicates")
 public class ManagerFederate {
@@ -29,6 +25,7 @@ public class ManagerFederate {
     protected EncoderFactory encoderFactory;
     protected List<Client> clients = new ArrayList<>();
     protected List<Checkout> checkouts = new ArrayList<>();
+    protected Map<ObjectInstanceHandle, ObjectClassHandle> instanceClassMap = new HashMap<>();
     protected ObjectClassHandle clientObjectHandle;
     protected AttributeHandle clientIsPrivileged;
     protected AttributeHandle clientNumberOfProducts;
@@ -119,20 +116,20 @@ public class ManagerFederate {
         }
 //
 //
-		enableTimePolicy();
-		log( "Time Policy Enabled" );
+        enableTimePolicy();
+        log("Time Policy Enabled");
         publishAndSubscribe();
         log("Published and Subscribed");
 
 
         while (fedamb.running) {
-            TimeUnit.SECONDS.sleep(3);
+//            TimeUnit.SECONDS.sleep(3);
 
 
             advanceTime(1.0);
-            doThings();
-            rtiamb.evokeMultipleCallbacks(0.1, 0.2);
+            log("Time Advanced to " + fedamb.federateTime);
 
+            doThings();
 //            rtiamb.evokeMultipleCallbacks( 0.1, 0.2 );
 
         }
@@ -166,7 +163,6 @@ public class ManagerFederate {
     private void publishAndSubscribe() throws RTIexception {
 //      discover object klient
         clientObjectHandle = rtiamb.getObjectClassHandle("HLAobjectRoot.Client");
-        log("clientHandle id: " + clientObjectHandle);
         clientIsPrivileged = rtiamb.getAttributeHandle(clientObjectHandle, "isPrivileged");
         clientNumberOfProducts = rtiamb.getAttributeHandle(clientObjectHandle, "numberOfProducts");
         clientId = rtiamb.getAttributeHandle(clientObjectHandle, "clientId");
@@ -205,7 +201,7 @@ public class ManagerFederate {
     }
 
     private void doThings() throws RTIexception {
-        HLAfloat64Time time = timeFactory.makeTime( fedamb.federateTime+fedamb.federateLookahead );
+        HLAfloat64Time time = timeFactory.makeTime(fedamb.federateTime + fedamb.federateLookahead);
         int openedCheckouts = checkouts.size();
         // 10 ludzi na 1 kolejke
         if (openedCheckouts * 10 < clients.size()) {
@@ -229,14 +225,14 @@ public class ManagerFederate {
         ParameterHandleValueMap parameters = rtiamb.getParameterHandleValueMapFactory().create(1);
         ParameterHandle idHandle = rtiamb.getParameterHandle(closeCheckoutInteractionHandle, "checkoutId");
         parameters.put(idHandle, encoderFactory.createHLAinteger32BE(checkoutId).toByteArray());
-        rtiamb.sendInteraction(closeCheckoutInteractionHandle, parameters, InteractionTag.CLOSE_CHECKOUT.toString().getBytes(), time);
+        rtiamb.sendInteraction(closeCheckoutInteractionHandle, parameters, generateTag(), time);
     }
 
     private void sendOpenCheckoutInteraction(int checkoutId, HLAfloat64Time time) throws RTIexception {
         ParameterHandleValueMap parameters = rtiamb.getParameterHandleValueMapFactory().create(1);
         ParameterHandle idHandle = rtiamb.getParameterHandle(openCheckoutInteractionHandle, "checkoutId");
         parameters.put(idHandle, encoderFactory.createHLAinteger32BE(checkoutId).toByteArray());
-        rtiamb.sendInteraction(openCheckoutInteractionHandle, parameters, InteractionTag.OPEN_CHECKOUT.toString().getBytes(), time);
+        rtiamb.sendInteraction(openCheckoutInteractionHandle, parameters, generateTag(), time);
     }
 
     private byte[] generateTag() {

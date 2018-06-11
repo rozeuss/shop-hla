@@ -6,6 +6,7 @@ import shop.utils.TimeUtils;
 
 import java.util.Arrays;
 
+@SuppressWarnings("Duplicates")
 public class StatisticAmbassador extends NullFederateAmbassador {
     protected double federateTime = 0.0;
     protected double grantedTime = 0.0;
@@ -107,7 +108,7 @@ public class StatisticAmbassador extends NullFederateAmbassador {
                                        OrderType receivedOrdering,
                                        SupplementalReflectInfo reflectInfo)
             throws FederateInternalError {
-        StringBuilder builder = new StringBuilder( "Reflection for object:" );
+        StringBuilder builder = new StringBuilder("Reflection for object:");
 
         for (int i = 0; i < federate.queues.size(); i++) {
             if (theObject.equals(federate.queues.get(i).getRtiHandler())) {
@@ -190,6 +191,7 @@ public class StatisticAmbassador extends NullFederateAmbassador {
                                        ObjectClassHandle theObjectClass,
                                        String objectName) throws FederateInternalError {
         log("Discoverd Object: handle=" + theObject + ", classHandle=" + theObjectClass + ", name=" + objectName);
+        this.federate.instanceClassMap.put(theObject, theObjectClass);
         if (theObjectClass.equals(this.federate.clientObjectHandle)) {
             this.federate.addNewClientObject(theObject);
         }

@@ -14,12 +14,10 @@
  */
 package shop.rti.checkout;
 
-import hla.rti.jlc.EncodingHelpers;
 import hla.rti1516e.*;
 import hla.rti1516e.exceptions.FederateInternalError;
 import hla.rti1516e.time.HLAfloat64Time;
 import shop.utils.DecoderUtils;
-import shop.utils.FederateTag;
 
 import java.util.Arrays;
 
@@ -92,8 +90,11 @@ public class CheckoutAmbassador extends NullFederateAmbassador {
     public void discoverObjectInstance(ObjectInstanceHandle theObject,
                                        ObjectClassHandle theObjectClass,
                                        String objectName) throws FederateInternalError {
+        this.federate.instanceClassMap.put(theObject, theObjectClass);
         if (theObjectClass.equals(this.federate.clientObjectHandle)) {
             this.federate.discoverClient(theObject);
+        } else if (theObjectClass.equals(this.federate.queueObjectHandle)) {
+            this.federate.discoverQueue(theObject);
         }
     }
 
@@ -122,15 +123,14 @@ public class CheckoutAmbassador extends NullFederateAmbassador {
                                        SupplementalReflectInfo reflectInfo)
             throws FederateInternalError {
         //TODO EncodingHelpers nie jest ze standardu ieee
-        String decodedTag = EncodingHelpers.decodeString(tag);
-        if (FederateTag.CLIENT.name().equals(decodedTag)) {
+        StringBuilder builder = new StringBuilder("Reflection for object:");
 
+        if (federate.instanceClassMap.get(theObject).equals(federate.clientObjectHandle)) {
             for (int i = 0; i < federate.clients.size(); i++) {
                 if (theObject.equals(federate.clients.get(i).getRtiHandler())) {
                     int clientId = 0;
                     int numberOfProducts = 0;
                     boolean isPrivileged = false;
-                    StringBuilder builder = new StringBuilder("Reflection for object:");
                     builder.append(" handle=" + theObject);
                     builder.append(", attributeCount=" + theAttributes.size());
                     builder.append("\n");
@@ -166,6 +166,44 @@ public class CheckoutAmbassador extends NullFederateAmbassador {
                 }
             }
 
+        } else if (federate.instanceClassMap.get(theObject).equals(federate.queueObjectHandle)) {
+
+            for (int i = 0; i < federate.queues.size(); i++) {
+                if (theObject.equals(federate.queues.get(i).getRtiHandler())) {
+                    int queueId = 0;
+                    int queueCurrentSize = 0;
+                    int queueMaxSize = 0;
+                    builder.append("CHECKOUT");
+                    builder.append(" handle=" + theObject);
+                    builder.append(", attributeCount=" + theAttributes.size());
+                    builder.append("\n");
+                    for (AttributeHandle attributeHandle : theAttributes.keySet()) {
+                        builder.append("\tattributeHandle=");
+                        if (attributeHandle.equals(federate.queueId)) {
+                            builder.append(attributeHandle);
+                            builder.append(" queueId:");
+                            builder.append(DecoderUtils.decodeInt(federate.encoderFactory, theAttributes.getValueReference(attributeHandle)));
+                            queueId = DecoderUtils.decodeInt(federate.encoderFactory, theAttributes.getValueReference(attributeHandle));
+                        } else if (attributeHandle.equals(federate.queueCurrentSize)) {
+                            builder.append(attributeHandle);
+                            builder.append(" queueCurrentSize:");
+                            builder.append(DecoderUtils.decodeInt(federate.encoderFactory, theAttributes.getValueReference(attributeHandle)));
+                            queueCurrentSize = DecoderUtils.decodeInt(federate.encoderFactory, theAttributes.getValueReference(attributeHandle));
+                        } else if (attributeHandle.equals(federate.queueMaxSize)) {
+                            builder.append(attributeHandle);
+                            builder.append(" queueMaxSize:");
+                            builder.append(DecoderUtils.decodeBoolean(federate.encoderFactory, theAttributes.getValueReference(attributeHandle)));
+                            queueMaxSize = DecoderUtils.decodeInt(federate.encoderFactory, theAttributes.getValueReference(attributeHandle));
+                        } else {
+                            builder.append(attributeHandle);
+                            builder.append(" (Unknown)   ");
+                        }
+                        builder.append("\n");
+                    }
+                    federate.updateQueue(theObject, queueId, queueMaxSize, queueCurrentSize);
+
+                }
+            }
         }
 
     }

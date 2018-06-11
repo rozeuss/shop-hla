@@ -14,15 +14,14 @@
  */
 package shop.rti.client;
 
-import hla.rti.jlc.EncodingHelpers;
 import hla.rti1516e.*;
 import hla.rti1516e.exceptions.FederateInternalError;
 import hla.rti1516e.exceptions.RTIexception;
 import hla.rti1516e.time.HLAfloat64Time;
 import shop.object.Checkout;
 import shop.utils.DecoderUtils;
-import shop.utils.FederateTag;
 
+@SuppressWarnings("Duplicates")
 public class ClientAmbassador extends NullFederateAmbassador {
     protected boolean running = true;
     protected double federateTime = 0.0;
@@ -93,7 +92,7 @@ public class ClientAmbassador extends NullFederateAmbassador {
                                        String objectName)
             throws FederateInternalError {
         StringBuilder builder = new StringBuilder("Discover object:");
-
+        this.federate.instanceClassMap.put(theObject, theObjectClass);
         if (theObjectClass.equals(this.federate.checkoutObjectHandle)) {
             builder.append("CHECKOUT");
             log("Discoverd Object: handle=" + theObject + ", classHandle=" +
@@ -147,8 +146,7 @@ public class ClientAmbassador extends NullFederateAmbassador {
 
 
         StringBuilder builder = new StringBuilder("Reflection for object:");
-        String decodedTag = EncodingHelpers.decodeString(tag);
-        if (FederateTag.CHECKOUT.name().equals(decodedTag)) {
+        if (federate.instanceClassMap.get(theObject).equals(federate.checkoutObjectHandle)) {
             for (int i = 0; i < federate.checkouts.size(); i++) {
                 if (theObject.equals(federate.checkouts.get(i).getRtiHandler())) {
                     int checkoutId = 0;
@@ -188,7 +186,7 @@ public class ClientAmbassador extends NullFederateAmbassador {
                     }
                 }
             }
-        } else if (FederateTag.QUEUE.name().equals(decodedTag)) {
+        } else if (federate.instanceClassMap.get(theObject).equals(federate.queueObjectHandle)) {
             for (int i = 0; i < federate.queues.size(); i++) {
                 if (theObject.equals(federate.queues.get(i).getRtiHandler())) {
                     int queueId = 0;
@@ -227,7 +225,7 @@ public class ClientAmbassador extends NullFederateAmbassador {
             }
         }
 
-        log(builder.toString());
+//        log(builder.toString());
     }
 
     @Override
@@ -286,9 +284,7 @@ public class ClientAmbassador extends NullFederateAmbassador {
             }
             federate.serviceClient(checkoutId, clientId);
         }
-
         log(builder.toString());
-
     }
 
     @Override

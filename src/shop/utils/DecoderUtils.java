@@ -27,11 +27,11 @@ public class DecoderUtils {
         return value.getValue();
     }
 
-    public static byte[] encodeInt (EncoderFactory encoderFactory, int val){
+    public static byte[] encodeInt(EncoderFactory encoderFactory, int val) {
         return encoderFactory.createHLAinteger32BE((val)).toByteArray();
     }
 
-    public static byte[] encodeBoolean (EncoderFactory encoderFactory, boolean val){
+    public static byte[] encodeBoolean(EncoderFactory encoderFactory, boolean val) {
         return encoderFactory.createHLAboolean((val)).toByteArray();
     }
 }
