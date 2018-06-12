@@ -1,17 +1,3 @@
-/*
- *   Copyright 2012 The Portico Project
- *
- *   This file is part of portico.
- *
- *   portico is free software; you can redistribute it and/or modify
- *   it under the terms of the Common Developer and Distribution License (CDDL) 
- *   as published by Sun Microsystems. For more information see the LICENSE file.
- *   
- *   Use of this software is strictly AT YOUR OWN RISK!!!
- *   If something bad happens you do not have permission to come crying to me.
- *   (that goes for your lawyer as well)
- *
- */
 package shop.rti.checkout;
 
 import hla.rti1516e.*;
@@ -31,11 +17,7 @@ import java.io.File;
 import java.io.InputStreamReader;
 import java.net.MalformedURLException;
 import java.net.URL;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.TimeUnit;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @SuppressWarnings("Duplicates")
@@ -58,12 +40,13 @@ public class CheckoutFederate {
     protected AttributeHandle checkoutId;
     protected AttributeHandle checkoutQueueId;
     protected List<Checkout> checkouts = new ArrayList<>();
+    protected List<Checkout> checkoutsToMake = new ArrayList<>();
     protected List<Client> clients = new ArrayList<>();
     protected List<Queue> queues = new ArrayList<>();
     protected Map<ObjectInstanceHandle, ObjectClassHandle> instanceClassMap = new HashMap<>();
     protected ObjectClassHandle clientObjectHandle;
     protected AttributeHandle clientIsPrivileged;
-    protected AttributeHandle clientNumberOfProducts;
+    protected AttributeHandle clientEndShoppingTime;
     protected AttributeHandle clientId;
     protected ObjectClassHandle queueObjectHandle;
     protected AttributeHandle queueMaxSize;
@@ -72,6 +55,8 @@ public class CheckoutFederate {
     private RTIambassador rtiamb;
     private CheckoutAmbassador fedamb;
     private HLAfloat64TimeFactory timeFactory;
+    private Random random = new Random();
+    private Map<Integer, Double> queueNowServicingTime = new HashMap<>();
 
     public static void main(String[] args) {
         String federateName = "checkout";
@@ -140,15 +125,12 @@ public class CheckoutFederate {
         publishAndSubscribe();
         log("Published and Subscribed");
 
-        createNewCheckout();
+        prepareCheckoutToRegister();
 
         while (fedamb.running) {
-//            TimeUnit.SECONDS.sleep(3);
             advanceTime(1.0);
             log("Time Advanced to " + fedamb.federateTime);
-
             doThings();
-//            rtiamb.evokeMultipleCallbacks(0.1, 0.2);
         }
     }
 
@@ -186,7 +168,6 @@ public class CheckoutFederate {
         openCheckoutCheckoutId = rtiamb.getParameterHandle(openCheckoutInteractionHandle, "checkoutId");
         rtiamb.subscribeInteractionClass(openCheckoutInteractionHandle);
 
-
         // zamkniecie kasy
         closeCheckoutInteractionHandle = rtiamb.getInteractionClassHandle("HLAinteractionRoot.CloseCheckout");
         closeCheckoutCheckoutId = rtiamb.getParameterHandle(closeCheckoutInteractionHandle, "checkoutId");
@@ -219,11 +200,11 @@ public class CheckoutFederate {
         //      discover object klient
         clientObjectHandle = rtiamb.getObjectClassHandle("HLAobjectRoot.Client");
         clientIsPrivileged = rtiamb.getAttributeHandle(clientObjectHandle, "isPrivileged");
-        clientNumberOfProducts = rtiamb.getAttributeHandle(clientObjectHandle, "numberOfProducts");
+        clientEndShoppingTime = rtiamb.getAttributeHandle(clientObjectHandle, "endShoppingTime");
         clientId = rtiamb.getAttributeHandle(clientObjectHandle, "clientId");
         AttributeHandleSet clientAttributes = rtiamb.getAttributeHandleSetFactory().create();
         clientAttributes.add(clientIsPrivileged);
-        clientAttributes.add(clientNumberOfProducts);
+        clientAttributes.add(clientEndShoppingTime);
         clientAttributes.add(clientId);
         rtiamb.subscribeObjectClassAttributes(clientObjectHandle, clientAttributes);
 
@@ -262,9 +243,10 @@ public class CheckoutFederate {
 
     private void doThings() throws RTIexception {
         HLAfloat64Time time = timeFactory.makeTime(fedamb.federateTime + fedamb.federateLookahead);
-//        for (Checkout checkout : checkouts) {
-//            updateCheckoutAttributeValues(checkout, time);
-//        }
+        for (Checkout checkout : checkoutsToMake) {
+            registerNewCheckout(checkout);
+        }
+        checkouts.clear();
         if (checkouts.size() > 0) {
             List<Checkout> openCheckouts = checkouts.stream().filter(Checkout::isOpen).collect(Collectors.toList());
             log("open checkouts = " + openCheckouts);
@@ -276,24 +258,24 @@ public class CheckoutFederate {
                         if (existingQueue != null && existingQueue.getCurrentSize() > 1) {
                             // TODO konieczne > 1 bo najpierw wykonuje swoje dzialania
                             // a dopiero potem robi update od obcych federatow
-                            try {
-                                TimeUnit.SECONDS.sleep(2);
-                            } catch (InterruptedException e) {
-                                e.printStackTrace();
+                            if (!queueNowServicingTime.containsKey(existingQueue.getQueueId())) {
+                                queueNowServicingTime.put(existingQueue.getQueueId(),
+                                        fedamb.federateTime + random.nextInt(5));
+                                sendStartServiceInteraction(existingQueue.getQueueId(), time);
                             }
-                            sendStartServiceInteraction(existingQueue.getQueueId(), time);
-                            try {
-                                TimeUnit.SECONDS.sleep(1);
-                            } catch (InterruptedException e) {
-                                e.printStackTrace();
-                            }
-                            sendEndServiceInteraction(existingQueue.getQueueId(), time);
                         }
 
                     }
                 }
             }
         }
+        for (Map.Entry<Integer, Double> integerDoubleEntry : queueNowServicingTime.entrySet()) {
+            if (integerDoubleEntry.getValue() == fedamb.federateTime) {
+                queueNowServicingTime.remove(integerDoubleEntry.getKey());
+                sendEndServiceInteraction(integerDoubleEntry.getKey(), time);
+            }
+        }
+
         for (Checkout checkout : checkouts) {
             updateCheckoutAttributeValues(checkout, time);
         }
@@ -303,18 +285,22 @@ public class CheckoutFederate {
         return ("(timestamp) " + System.currentTimeMillis()).getBytes();
     }
 
-    public void createNewCheckout() {
+    public void registerNewCheckout(Checkout checkout) {
         ObjectInstanceHandle objectInstanceHandle = null;
         try {
             objectInstanceHandle = registerObject();
         } catch (RTIexception rtIexception) {
             rtIexception.printStackTrace();
         }
-        Checkout checkout = new Checkout(Checkout.count.getAndIncrement(), 0, true, objectInstanceHandle);
-        checkout.setQueueId(checkout.getQueueId());
+        checkout.setRtiHandler(objectInstanceHandle);
+        System.out.println("CREATED: " + checkout);
         checkouts.add(checkout);
-        log("Created new checkout");
-        log("" + checkouts);
+    }
+
+    public void prepareCheckoutToRegister() {
+        Checkout checkout = new Checkout(Checkout.count.getAndIncrement(), 0, true, null);
+        checkoutsToMake.add(checkout);
+        System.out.println("TO CREATE: " + checkout);
     }
 
     private ObjectInstanceHandle registerObject() throws RTIexception {
@@ -326,12 +312,12 @@ public class CheckoutFederate {
         log("DISCOVERED NEW CLIENT " + client);
     }
 
-    protected void updateClient(ObjectInstanceHandle handle, int clientId, boolean isPrivileged, int numberOfProducts) {
+    protected void updateClient(ObjectInstanceHandle handle, int clientId, boolean isPrivileged, int endShoppingTime) {
         for (Client client : clients) {
             if (client.getRtiHandler().equals(handle)) {
                 client.setClientId(clientId);
                 client.setPrivileged(isPrivileged);
-                client.setNumberOfProducts(numberOfProducts);
+                client.setEndShoppingTime(endShoppingTime);
             }
         }
 //        log("Updated clients " + clients);

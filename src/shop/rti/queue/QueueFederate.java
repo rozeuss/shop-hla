@@ -1,17 +1,3 @@
-/*
- *   Copyright 2012 The Portico Project
- *
- *   This file is part of portico.
- *
- *   portico is free software; you can redistribute it and/or modify
- *   it under the terms of the Common Developer and Distribution License (CDDL) 
- *   as published by Sun Microsystems. For more information see the LICENSE file.
- *   
- *   Use of this software is strictly AT YOUR OWN RISK!!!
- *   If something bad happens you do not have permission to come crying to me.
- *   (that goes for your lawyer as well)
- *
- */
 package shop.rti.queue;
 
 import hla.rti1516e.*;
@@ -50,6 +36,7 @@ public class QueueFederate {
     protected InteractionClassHandle closeCheckoutInteractionHandle;
     protected List<Checkout> checkouts = new ArrayList<>();
     protected List<Queue> queues = new ArrayList<>();
+    protected List<Queue> queuesToMake = new ArrayList<>();
     protected List<Client> clients = new ArrayList<>();
     protected Map<ObjectInstanceHandle, ObjectClassHandle> instanceClassMap = new HashMap<>();
     protected ObjectClassHandle queueObjectHandle;
@@ -58,7 +45,7 @@ public class QueueFederate {
     protected AttributeHandle queueId;
     protected ObjectClassHandle clientObjectHandle;
     protected AttributeHandle clientIsPrivileged;
-    protected AttributeHandle clientNumberOfProducts;
+    protected AttributeHandle clientEndShoppingTime;
     protected AttributeHandle clientId;
     Random random = new Random();
     private RTIambassador rtiamb;
@@ -148,12 +135,12 @@ public class QueueFederate {
         publishAndSubscribe();
         log("Published and Subscribed");
 
-        createNewQueue();
+        prepareQueueToRegister();
 
         while (fedamb.running) {
 //            TimeUnit.SECONDS.sleep(3);
 
-            advanceTime(1.0); // TODO
+            advanceTime(1.0);
             log("Time Advanced to " + fedamb.federateTime);
 
             doThings();
@@ -213,11 +200,11 @@ public class QueueFederate {
         //      discover object klient
         clientObjectHandle = rtiamb.getObjectClassHandle("HLAobjectRoot.Client");
         clientIsPrivileged = rtiamb.getAttributeHandle(clientObjectHandle, "isPrivileged");
-        clientNumberOfProducts = rtiamb.getAttributeHandle(clientObjectHandle, "numberOfProducts");
+        clientEndShoppingTime = rtiamb.getAttributeHandle(clientObjectHandle, "endShoppingTime");
         clientId = rtiamb.getAttributeHandle(clientObjectHandle, "clientId");
         AttributeHandleSet clientAttributes = rtiamb.getAttributeHandleSetFactory().create();
         clientAttributes.add(clientIsPrivileged);
-        clientAttributes.add(clientNumberOfProducts);
+        clientAttributes.add(clientEndShoppingTime);
         clientAttributes.add(clientId);
         rtiamb.subscribeObjectClassAttributes(clientObjectHandle, clientAttributes);
     }
@@ -245,9 +232,10 @@ public class QueueFederate {
 
     private void doThings() throws RTIexception {
         HLAfloat64Time time = timeFactory.makeTime(fedamb.federateTime + fedamb.federateLookahead);
-//        for (Queue queue : queues) {
-//            updateQueueAttributeValues(queue, time);
-//        }
+        for (Queue queue : queuesToMake) {
+            registerNewQueue(queue);
+        }
+        queuesToMake.clear();
         for (Queue queue : queues) {
             updateQueueAttributeValues(queue, time);
         }
@@ -257,23 +245,22 @@ public class QueueFederate {
         return ("(timestamp) " + System.currentTimeMillis()).getBytes();
     }
 
-    public void createNewQueue() {
+    public void prepareQueueToRegister() {
+        Queue queue = new Queue(Queue.count.getAndIncrement(), random.nextInt(Queue.MAX_SIZE) + 1, Queue.INITIAL_SIZE);
+        queuesToMake.add(queue);
+        System.out.println("TO CREATE: " + queuesToMake);
+    }
+
+    public void registerNewQueue(Queue queue) {
         ObjectInstanceHandle objectInstanceHandle = null;
         try {
             objectInstanceHandle = registerObject();
         } catch (RTIexception rtIexception) {
             rtIexception.printStackTrace();
         }
-//        Queue queue = new Queue(Queue.count.incrementAndGet(),
-//                random.nextInt(Queue.MAX_SIZE) + 1,
-//                Queue.INITIAL_SIZE,
-//                new ArrayList<>(),
-//                objectInstanceHandle);
-        Queue queue = new Queue(Queue.count.getAndIncrement(), random.nextInt(Queue.MAX_SIZE) + 1, Queue.INITIAL_SIZE);
         queue.setRtiHandler(objectInstanceHandle);
+        System.out.println("CREATED: " + queue);
         queues.add(queue);
-        log("Created new queue");
-        System.out.println(queues);
     }
 
     private ObjectInstanceHandle registerObject() throws RTIexception {
@@ -283,7 +270,7 @@ public class QueueFederate {
     public void addNewClientToQueue(int queueId, int clientId) {
         //TODO uprzywilejowany poprawic
         System.out.println("ADD NEW CLIENT TO QUEUE: (" + clientId + ")");
-        System.out.println(queues.get(0));
+        System.out.println(queues.get(queueId));
         Optional<Client> client = clients.stream().filter(c -> c.getClientId() == clientId).findFirst();
         if (client.isPresent()) {
             Queue queue = queues.get(queueId);
@@ -295,7 +282,7 @@ public class QueueFederate {
                 queue.getClients().add(0, client.get());
             }
         }
-        System.out.println(queues.get(0));
+        System.out.println(queues.get(queueId));
     }
 
     public void removeClientFromQueue(int checkoutId, int clientId) {
@@ -316,12 +303,12 @@ public class QueueFederate {
 // TODO
     }
 
-    protected void updateClient(ObjectInstanceHandle handle, int clientId, boolean isPrivileged, int numberOfProducts) {
+    protected void updateClient(ObjectInstanceHandle handle, int clientId, boolean isPrivileged, int endShoppingTime) {
         for (Client client : clients) {
             if (client.getRtiHandler().equals(handle)) {
                 client.setClientId(clientId);
                 client.setPrivileged(isPrivileged);
-                client.setNumberOfProducts(numberOfProducts);
+                client.setEndShoppingTime(endShoppingTime);
             }
         }
     }

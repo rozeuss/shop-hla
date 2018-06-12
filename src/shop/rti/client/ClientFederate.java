@@ -1,17 +1,3 @@
-/*
- *   Copyright 2012 The Portico Project
- *
- *   This file is part of portico.
- *
- *   portico is free software; you can redistribute it and/or modify
- *   it under the terms of the Common Developer and Distribution License (CDDL) 
- *   as published by Sun Microsystems. For more information see the LICENSE file.
- *   
- *   Use of this software is strictly AT YOUR OWN RISK!!!
- *   If something bad happens you do not have permission to come crying to me.
- *   (that goes for your lawyer as well)
- *
- */
 package shop.rti.client;
 
 import hla.rti1516e.*;
@@ -41,7 +27,7 @@ import java.util.stream.Collectors;
 public class ClientFederate {
 
     public static final String READY_TO_RUN = "ReadyToRun";
-    public static final int CLIENT_ARRIVAL_PROBABILITY = 3;
+    public static final int CLIENT_ARRIVAL_PROBABILITY = 2;
     protected EncoderFactory encoderFactory;
     protected ObjectClassHandle clientObjectHandle;
     protected InteractionClassHandle chooseQueueInteractionHandle;
@@ -59,13 +45,14 @@ public class ClientFederate {
     protected List<Queue> queues = new ArrayList<>();
     protected Map<ObjectInstanceHandle, ObjectClassHandle> instanceClassMap = new HashMap<>();
     protected AttributeHandle clientIsPrivileged;
-    protected AttributeHandle clientNumberOfProducts;
+    protected AttributeHandle clientEndShoppingTime;
     protected AttributeHandle clientId;
     protected ObjectClassHandle queueObjectHandle;
     protected AttributeHandle queueMaxSize;
     protected AttributeHandle queueCurrentSize;
     protected AttributeHandle queueId;
-    Random random = new Random();
+    boolean hasClientArrived = false;
+    private Random random = new Random();
     private RTIambassador rtiamb;
     private ClientAmbassador fedamb;
     private HLAfloat64TimeFactory timeFactory;
@@ -164,7 +151,6 @@ public class ClientFederate {
         }
     }
 
-
     private void enableTimePolicy() throws Exception {
         HLAfloat64Interval lookahead = timeFactory.makeInterval(fedamb.federateLookahead);
         this.rtiamb.enableTimeRegulation(lookahead);
@@ -185,11 +171,11 @@ public class ClientFederate {
         // register object klient
         clientObjectHandle = rtiamb.getObjectClassHandle("HLAobjectRoot.Client");
         clientIsPrivileged = rtiamb.getAttributeHandle(clientObjectHandle, "isPrivileged");
-        clientNumberOfProducts = rtiamb.getAttributeHandle(clientObjectHandle, "numberOfProducts");
+        clientEndShoppingTime = rtiamb.getAttributeHandle(clientObjectHandle, "endShoppingTime");
         clientId = rtiamb.getAttributeHandle(clientObjectHandle, "clientId");
         AttributeHandleSet clientAttributes = rtiamb.getAttributeHandleSetFactory().create();
         clientAttributes.add(clientIsPrivileged);
-        clientAttributes.add(clientNumberOfProducts);
+        clientAttributes.add(clientEndShoppingTime);
         clientAttributes.add(clientId);
         rtiamb.publishObjectClassAttributes(clientObjectHandle, clientAttributes);
         rtiamb.subscribeObjectClassAttributes(clientObjectHandle, clientAttributes);
@@ -240,14 +226,13 @@ public class ClientFederate {
     }
 
     private ObjectInstanceHandle registerObject() throws RTIexception {
-        System.out.println(clientObjectHandle);
         return rtiamb.registerObjectInstance(clientObjectHandle);
     }
 
     protected void updateClientAttributeValues(Client client, HLAfloat64Time time) throws RTIexception {
         AttributeHandleValueMap attributes = rtiamb.getAttributeHandleValueMapFactory().create(3);
         attributes.put(clientId, DecoderUtils.encodeInt(encoderFactory, client.getClientId()));
-        attributes.put(clientNumberOfProducts, DecoderUtils.encodeInt(encoderFactory, client.getNumberOfProducts()));
+        attributes.put(clientEndShoppingTime, DecoderUtils.encodeInt(encoderFactory, client.getEndShoppingTime()));
         attributes.put(clientIsPrivileged, DecoderUtils.encodeBoolean(encoderFactory, client.isPrivileged()));
         rtiamb.updateAttributeValues(client.getRtiHandler(), attributes, generateTag(), time);
     }
@@ -273,20 +258,25 @@ public class ClientFederate {
 
     private void doThings() throws RTIexception {
         HLAfloat64Time time = timeFactory.makeTime(fedamb.federateTime + fedamb.federateLookahead);
-        Queue queue = queues.stream().min(Comparator.comparingInt(Queue::getCurrentSize))
-                .orElseThrow(NoSuchElementException::new);
-        if (queue.getCurrentSize() < queue.getMaxSize()) {
-            List<Client> shoppingClients = clients.stream()
-                    .filter(((Predicate<Client>) Client::isWaitingInQueue).negate())
-                    .collect(Collectors.toList());
-            if (!shoppingClients.isEmpty()) {
-                int clientId = random.nextInt(shoppingClients.size());
-                sendChooseQueueInteraction(time, shoppingClients.get(clientId));
-                shoppingClients.get(clientId).setWaitingInQueue(true);
-                System.out.println(shoppingClients.get(clientId));
+        Queue queue = queues.stream().min(Comparator.comparingInt(Queue::getCurrentSize)).orElse(null);
+        List<Client> shoppingClients = clients.stream()
+                .filter(((Predicate<Client>) Client::isWaitingInQueue).negate())
+                .collect(Collectors.toList());
+        for (Client client : shoppingClients) {
+            if (hasClientFinishedShopping(client.getEndShoppingTime())) {
+                if (queue != null) {
+                    if (queue.getCurrentSize() < queue.getMaxSize()) {
+                        if (!shoppingClients.isEmpty()) {
+                            sendChooseQueueInteraction(queue, client, time);
+                            client.setWaitingInQueue(true);
+                            System.out.println(client);
+                        }
+                    }
+                }
+
             }
         }
-        boolean hasClientArrived = new Random().nextInt(CLIENT_ARRIVAL_PROBABILITY) == 0;
+        hasClientArrived = random.nextInt(CLIENT_ARRIVAL_PROBABILITY) == 0;
         if (hasClientArrived) {
             createClientObject();
         }
@@ -295,11 +285,14 @@ public class ClientFederate {
         }
     }
 
-    private void sendChooseQueueInteraction(HLAfloat64Time time, Client client) throws RTIexception {
+    private boolean hasClientFinishedShopping(int endShoppingTime) {
+        return endShoppingTime <= fedamb.federateTime;
+    }
+
+    private void sendChooseQueueInteraction(Queue queue, Client client, HLAfloat64Time time) throws RTIexception {
         log("WYBIERAM KOLEJKE");
         ParameterHandleValueMap parameterHandleValueMap = rtiamb.getParameterHandleValueMapFactory().create(2);
-        // TODO ktory klient wybiera ktora kolejke
-        parameterHandleValueMap.put(chooseQueueCheckoutId, encoderFactory.createHLAinteger32BE(0).toByteArray());
+        parameterHandleValueMap.put(chooseQueueCheckoutId, encoderFactory.createHLAinteger32BE(queue.getQueueId()).toByteArray());
         parameterHandleValueMap.put(chooseQueueClientId, encoderFactory.createHLAinteger32BE(client.getClientId()).toByteArray());
         rtiamb.sendInteraction(chooseQueueInteractionHandle, parameterHandleValueMap, generateTag(), time);
     }
@@ -314,6 +307,7 @@ public class ClientFederate {
     }
 
     private void deleteObject(ObjectInstanceHandle handle, LogicalTime time) throws RTIexception {
+        log("Client (" + handle + ") deleted");
         rtiamb.deleteObjectInstance(handle, generateTag(), time);
     }
 
@@ -326,6 +320,7 @@ public class ClientFederate {
     }
 
     private void createClientObject() {
+        log("New client arrived");
         Client client = new Client();
         ObjectInstanceHandle clientInstanceHandle = null;
         try {
@@ -335,7 +330,7 @@ public class ClientFederate {
         }
         client.setRtiHandler(clientInstanceHandle);
         client.setClientId(Client.count.getAndIncrement());
-        client.setNumberOfProducts(random.nextInt(Client.MAX_PRODUCTS) + 1);
+        client.setEndShoppingTime(random.nextInt(Client.MAX_PRODUCTS) + 1 + (int) fedamb.federateTime);
         client.setPrivileged(random.nextBoolean());
         log(client.toString());
         clients.add(client);
@@ -349,9 +344,15 @@ public class ClientFederate {
         queues.add(new Queue(queueHandle));
     }
 
-    public void serviceClient(int checkoutId, int clientId) {
+    public void serviceClient(int checkoutId, int clientId, LogicalTime time) {
         //TODO co z checkoutId
-        clients.remove(clients.get(clientId));
+        Client client = clients.get(clientId);
+//        try {
+//            deleteObject(client.getRtiHandler(), time);
+//        } catch (RTIexception rtIexception) {
+//            rtIexception.printStackTrace();
+//        }
+        clients.remove(client);
     }
 
     public void updateQueue(ObjectInstanceHandle handle, int queueId, int queueMaxSize, int queueCurrentSize) {
@@ -362,6 +363,5 @@ public class ClientFederate {
                 queue.setCurrentSize(queueCurrentSize);
             }
         }
-        log("Updates queues " + queues);
     }
 }

@@ -1,17 +1,4 @@
-/*
- *   Copyright 2012 The Portico Project
- *
- *   This file is part of portico.
- *
- *   portico is free software; you can redistribute it and/or modify
- *   it under the terms of the Common Developer and Distribution License (CDDL) 
- *   as published by Sun Microsystems. For more information see the LICENSE file.
- *   
- *   Use of this software is strictly AT YOUR OWN RISK!!!
- *   If something bad happens you do not have permission to come crying to me.
- *   (that goes for your lawyer as well)
- *
- */
+
 package shop.rti.queue;
 
 import hla.rti.jlc.EncodingHelpers;
@@ -132,7 +119,7 @@ public class QueueAmbassador extends NullFederateAmbassador {
             for (int i = 0; i < federate.clients.size(); i++) {
                 if (theObject.equals(federate.clients.get(i).getRtiHandler())) {
                     int clientId = 0;
-                    int numberOfProducts = 0;
+                    int endShoppingTime = 0;
                     boolean isPrivileged = false;
                     StringBuilder builder = new StringBuilder("Reflection for object:");
                     builder.append(" handle=" + theObject);
@@ -146,12 +133,12 @@ public class QueueAmbassador extends NullFederateAmbassador {
                             int val = DecoderUtils.decodeInt(federate.encoderFactory, theAttributes.getValueReference(attributeHandle));
                             builder.append(val);
                             clientId = val;
-                        } else if (attributeHandle.equals(federate.clientNumberOfProducts)) {
+                        } else if (attributeHandle.equals(federate.clientEndShoppingTime)) {
                             builder.append(attributeHandle);
-                            builder.append(" numberOfProducts:");
+                            builder.append(" endShoppingTime:");
                             int val = DecoderUtils.decodeInt(federate.encoderFactory, theAttributes.getValueReference(attributeHandle));
                             builder.append(val);
-                            numberOfProducts = val;
+                            endShoppingTime = val;
                         } else if (attributeHandle.equals(federate.clientIsPrivileged)) {
                             builder.append(attributeHandle);
                             builder.append(" isPrivileged:");
@@ -166,7 +153,7 @@ public class QueueAmbassador extends NullFederateAmbassador {
                         builder.append("\n");
                     }
 //                    log(builder.toString());
-                    this.federate.updateClient(theObject, clientId, isPrivileged, numberOfProducts);
+                    this.federate.updateClient(theObject, clientId, isPrivileged, endShoppingTime);
                 }
             }
         }
@@ -203,7 +190,7 @@ public class QueueAmbassador extends NullFederateAmbassador {
         builder.append(" *receiveInfo* ").append(receiveInfo);
         if (interactionClass.equals(federate.openCheckoutInteractionHandle)) {
             builder.append("openCheckoutInteractionHandle");
-            federate.createNewQueue();
+            federate.prepareQueueToRegister();
         } else if (interactionClass.equals(federate.chooseQueueInteractionHandle)) {
             builder.append("chooseQueueInteractionHandle");
             int queueId = 0;
