@@ -81,21 +81,20 @@ public class ClientAmbassador extends NullFederateAmbassador {
         this.federate.instanceClassMap.put(theObject, theObjectClass);
         if (theObjectClass.equals(this.federate.checkoutObjectHandle)) {
             builder.append("CHECKOUT");
-            log("Discoverd Object: handle=" + theObject + ", classHandle=" +
-                    theObjectClass + ", name=" + objectName);
+//            log("Discoverd Object: handle=" + theObject + ", classHandle=" +
+//                    theObjectClass + ", name=" + objectName);
             builder.append(" handle=" + theObject);
             builder.append("\n");
             this.federate.addNewCheckout(theObject);
         } else if (theObjectClass.equals(this.federate.queueObjectHandle)) {
             builder.append("QUEUE");
-            log("Discoverd Object: handle=" + theObject + ", classHandle=" +
-                    theObjectClass + ", name=" + objectName);
+//            log("Discoverd Object: handle=" + theObject + ", classHandle=" +
+//                    theObjectClass + ", name=" + objectName);
             builder.append(" handle=" + theObject);
             builder.append("\n");
             this.federate.addNewQueue(theObject);
         }
-        log(builder.toString());
-
+//        log(builder.toString());
     }
 
     @Override
@@ -133,8 +132,8 @@ public class ClientAmbassador extends NullFederateAmbassador {
 
         StringBuilder builder = new StringBuilder("Reflection for object:");
         if (federate.instanceClassMap.get(theObject).equals(federate.checkoutObjectHandle)) {
-            for (int i = 0; i < federate.checkouts.size(); i++) {
-                if (theObject.equals(federate.checkouts.get(i).getRtiHandler())) {
+//            for (int i = 0; i < federate.checkouts.size(); i++) {
+//                if (theObject.equals(federate.checkouts.get(i).getRtiHandler())) {
                     int checkoutId = 0;
                     int checkoutQueueId = 0;
                     boolean checkoutIsOpened = false;
@@ -165,16 +164,13 @@ public class ClientAmbassador extends NullFederateAmbassador {
                         }
                         builder.append("\n");
                     }
-                    try {
-                        federate.updateCheckout(new Checkout(checkoutId, checkoutQueueId, checkoutIsOpened, theObject));
-                    } catch (RTIexception rtIexception) {
-                        rtIexception.printStackTrace();
-                    }
-                }
-            }
+                    federate.updateCheckout(theObject, checkoutId, checkoutIsOpened, checkoutQueueId);
+//                }
+//            }
         } else if (federate.instanceClassMap.get(theObject).equals(federate.queueObjectHandle)) {
-            for (int i = 0; i < federate.queues.size(); i++) {
-                if (theObject.equals(federate.queues.get(i).getRtiHandler())) {
+            // TODO petle chyba niepotrzebne ehhh
+//            for (int i = 0; i < federate.queues.size(); i++) {
+//                if (theObject.equals(federate.queues.get(i).getRtiHandler())) {
                     int queueId = 0;
                     int queueCurrentSize = 0;
                     int queueMaxSize = 0;
@@ -208,9 +204,8 @@ public class ClientAmbassador extends NullFederateAmbassador {
                     federate.updateQueue(theObject, queueId, queueMaxSize, queueCurrentSize);
 
                 }
-            }
-        }
-
+//            }
+//        }
 //        log(builder.toString());
     }
 
@@ -270,7 +265,7 @@ public class ClientAmbassador extends NullFederateAmbassador {
             }
             federate.serviceClient(checkoutId, clientId, time);
         }
-        log(builder.toString());
+//        log(builder.toString());
     }
 
     @Override

@@ -24,30 +24,29 @@ public class QueueFederate {
 
     public static final String READY_TO_RUN = "ReadyToRun";
     protected EncoderFactory encoderFactory;
-    protected InteractionClassHandle openCheckoutInteractionHandle;
-    protected ParameterHandle openCheckoutCheckoutId;
-    protected InteractionClassHandle chooseQueueInteractionHandle;
-    protected ParameterHandle chooseQueueCheckoutId;
-    protected ParameterHandle chooseQueueClientId;
-    protected InteractionClassHandle endServiceInteractionHandle;
-    protected ParameterHandle endServiceCheckoutId;
-    protected ParameterHandle endServiceClientId;
-    protected ParameterHandle closeCheckoutCheckoutId;
-    protected InteractionClassHandle closeCheckoutInteractionHandle;
-    protected List<Checkout> checkouts = new ArrayList<>();
-    protected List<Queue> queues = new ArrayList<>();
-    protected List<Queue> queuesToMake = new ArrayList<>();
-    protected List<Client> clients = new ArrayList<>();
-    protected Map<ObjectInstanceHandle, ObjectClassHandle> instanceClassMap = new HashMap<>();
-    protected ObjectClassHandle queueObjectHandle;
-    protected AttributeHandle queueMaxSize;
-    protected AttributeHandle queueCurrentSize;
-    protected AttributeHandle queueId;
-    protected ObjectClassHandle clientObjectHandle;
-    protected AttributeHandle clientIsPrivileged;
-    protected AttributeHandle clientEndShoppingTime;
-    protected AttributeHandle clientId;
-    Random random = new Random();
+    InteractionClassHandle openCheckoutInteractionHandle;
+    ParameterHandle openCheckoutCheckoutId;
+    InteractionClassHandle chooseQueueInteractionHandle;
+    ParameterHandle chooseQueueCheckoutId;
+    ParameterHandle chooseQueueClientId;
+    InteractionClassHandle endServiceInteractionHandle;
+    ParameterHandle endServiceCheckoutId;
+    ParameterHandle endServiceClientId;
+    ParameterHandle closeCheckoutCheckoutId;
+    InteractionClassHandle closeCheckoutInteractionHandle;
+    List<Queue> queues = new ArrayList<>();
+    List<Queue> queuesToMake = new ArrayList<>();
+    List<Client> clients = new ArrayList<>();
+    Map<ObjectInstanceHandle, ObjectClassHandle> instanceClassMap = new HashMap<>();
+    ObjectClassHandle queueObjectHandle;
+    AttributeHandle queueMaxSize;
+    AttributeHandle queueCurrentSize;
+    AttributeHandle queueId;
+    ObjectClassHandle clientObjectHandle;
+    AttributeHandle clientIsPrivileged;
+    AttributeHandle clientEndShoppingTime;
+    AttributeHandle clientId;
+    private Random random = new Random();
     private RTIambassador rtiamb;
     private QueueAmbassador fedamb;
     private HLAfloat64TimeFactory timeFactory;
@@ -79,22 +78,16 @@ public class QueueFederate {
         }
     }
 
-    public void runFederate(String federateName) throws Exception {
-
+    private void runFederate(String federateName) throws Exception {
         log("Creating RTIambassador");
         rtiamb = RtiFactoryFactory.getRtiFactory().getRtiAmbassador();
         encoderFactory = RtiFactoryFactory.getRtiFactory().getEncoderFactory();
-
         log("Connecting...");
         fedamb = new QueueAmbassador(this);
         rtiamb.connect(fedamb, CallbackModel.HLA_EVOKED);
-
-
         log("Creating Federation...");
-
         try {
             URL[] modules = new URL[]{(new File("FOM.xml")).toURI().toURL()};
-
             rtiamb.createFederationExecution("ExampleFederation", modules);
             log("Created Federation");
         } catch (FederationExecutionAlreadyExists exists) {
@@ -104,60 +97,42 @@ public class QueueFederate {
             urle.printStackTrace();
             return;
         }
-
         rtiamb.joinFederationExecution(federateName, "ExampleFederation");
-
-
         log("Joined Federation as " + federateName);
-
         this.timeFactory = (HLAfloat64TimeFactory) rtiamb.getTimeFactory();
-
-
         rtiamb.registerFederationSynchronizationPoint(READY_TO_RUN, null);
         while (fedamb.isAnnounced == false) {
             rtiamb.evokeMultipleCallbacks(0.1, 0.2);
         }
-
         waitForUser();
-
-
         rtiamb.synchronizationPointAchieved(READY_TO_RUN);
         log("Achieved sync point: " + READY_TO_RUN + ", waiting for federation...");
         while (fedamb.isReadyToRun == false) {
             rtiamb.evokeMultipleCallbacks(0.1, 0.2);
         }
-
-
         enableTimePolicy();
         log("Time Policy Enabled");
-
-
         publishAndSubscribe();
         log("Published and Subscribed");
 
-        prepareQueueToRegister();
-
+//        receiveOpenCheckoutInteraction(checkoutId);
+        registerNewQueue(new Queue(Queue.count.getAndIncrement(), random.nextInt(Queue.MAX_SIZE) + 1));
+        System.out.println("*************************************************");
         while (fedamb.running) {
-//            TimeUnit.SECONDS.sleep(3);
-
             advanceTime(1.0);
             log("Time Advanced to " + fedamb.federateTime);
-
             doThings();
-//            rtiamb.evokeMultipleCallbacks(0.1, 0.2);
-//            rtiamb.evokeMultipleCallbacks( 0.1, 0.2 );
-
         }
     }
 
     private void enableTimePolicy() throws Exception {
         HLAfloat64Interval lookahead = timeFactory.makeInterval(fedamb.federateLookahead);
         this.rtiamb.enableTimeRegulation(lookahead);
-        while (fedamb.isRegulating == false) {
+        while (!fedamb.isRegulating) {
             rtiamb.evokeMultipleCallbacks(0.1, 0.2);
         }
         this.rtiamb.enableTimeConstrained();
-        while (fedamb.isConstrained == false) {
+        while (!fedamb.isConstrained) {
             rtiamb.evokeMultipleCallbacks(0.1, 0.2);
         }
     }
@@ -197,7 +172,7 @@ public class QueueFederate {
         closeCheckoutCheckoutId = rtiamb.getParameterHandle(closeCheckoutInteractionHandle, "checkoutId");
         rtiamb.subscribeInteractionClass(closeCheckoutInteractionHandle);
 
-        //      discover object klient
+        // discover object klient
         clientObjectHandle = rtiamb.getObjectClassHandle("HLAobjectRoot.Client");
         clientIsPrivileged = rtiamb.getAttributeHandle(clientObjectHandle, "isPrivileged");
         clientEndShoppingTime = rtiamb.getAttributeHandle(clientObjectHandle, "endShoppingTime");
@@ -209,7 +184,7 @@ public class QueueFederate {
         rtiamb.subscribeObjectClassAttributes(clientObjectHandle, clientAttributes);
     }
 
-    protected void updateQueueAttributeValues(Queue queue, HLAfloat64Time time) throws RTIexception {
+    private void updateQueueAttributeValues(Queue queue, HLAfloat64Time time) throws RTIexception {
         AttributeHandleValueMap attributes = rtiamb.getAttributeHandleValueMapFactory().create(3);
         attributes.put(queueId, DecoderUtils.encodeInt(encoderFactory, queue.getQueueId()));
         attributes.put(queueCurrentSize, DecoderUtils.encodeInt(encoderFactory, queue.getCurrentSize()));
@@ -231,6 +206,8 @@ public class QueueFederate {
     }
 
     private void doThings() throws RTIexception {
+        queues.forEach(System.out::println);
+//        clients.forEach(System.out::println);
         HLAfloat64Time time = timeFactory.makeTime(fedamb.federateTime + fedamb.federateLookahead);
         for (Queue queue : queuesToMake) {
             registerNewQueue(queue);
@@ -245,13 +222,28 @@ public class QueueFederate {
         return ("(timestamp) " + System.currentTimeMillis()).getBytes();
     }
 
-    public void prepareQueueToRegister() {
-        Queue queue = new Queue(Queue.count.getAndIncrement(), random.nextInt(Queue.MAX_SIZE) + 1, Queue.INITIAL_SIZE);
+    void receiveOpenCheckoutInteraction(int checkoutId) {
+        Optional<Queue> first = queues.stream().filter(queue -> queue.getQueueId() == checkoutId).findFirst();
+        if (first.isPresent()) {
+            openExistingQueue(first);
+        } else {
+            openNewQueue();
+        }
+    }
+
+    private void openExistingQueue(Optional<Queue> first) {
+        first.get().setMaxSize(first.get().getOriginalMaxSize());
+        System.out.println("OPEN EXISTING QUEUE (" + first.get().getQueueId() + ")");
+    }
+
+    private void openNewQueue() {
+        Queue queue = new Queue(Queue.count.getAndIncrement(), random.nextInt(Queue.MAX_SIZE) + 1);
+        queue.setOriginalMaxSize(queue.getMaxSize());
         queuesToMake.add(queue);
         System.out.println("TO CREATE: " + queuesToMake);
     }
 
-    public void registerNewQueue(Queue queue) {
+    private void registerNewQueue(Queue queue) {
         ObjectInstanceHandle objectInstanceHandle = null;
         try {
             objectInstanceHandle = registerObject();
@@ -267,8 +259,7 @@ public class QueueFederate {
         return rtiamb.registerObjectInstance(queueObjectHandle);
     }
 
-    public void addNewClientToQueue(int queueId, int clientId) {
-        //TODO uprzywilejowany poprawic
+    void addNewClientToQueue(int queueId, int clientId) {
         System.out.println("ADD NEW CLIENT TO QUEUE: (" + clientId + ")");
         System.out.println(queues.get(queueId));
         Optional<Client> client = clients.stream().filter(c -> c.getClientId() == clientId).findFirst();
@@ -285,25 +276,24 @@ public class QueueFederate {
         System.out.println(queues.get(queueId));
     }
 
-    public void removeClientFromQueue(int checkoutId, int clientId) {
-        System.out.println("REMOVE CLIENT FROM QUEUE");
-        System.out.println("REMOVE CLIENT ID: " + clientId);
-        System.out.println(queues.get(0));
-        Queue queue = queues.get(checkoutId);
-//        queue.getClients().removeIf(client -> client.getClientId() == clientId);
-        Client removed = queue.getClients().remove(0);
+    void removeClientFromQueue(int queueId, int clientId) {
+        System.out.println("REMOVE CLIENT (" + clientId + ") FROM QUEUE (" + queueId + ")");
+        Queue queue = queues.get(queueId);
+        System.out.println(queue);
+//         queue.getClients().removeIf(client -> client.getClientId() == clientId);
+        Client removed = queue.getClients().remove(0); //TODO czy na pewno poprawnie?
         if (removed != null) {
             queue.setCurrentSize(queue.getCurrentSize() - 1);
         }
-        System.out.println(queues.get(0));
+        System.out.println(queues.get(queueId));
     }
 
-    public void closeCheckout(int checkoutId) {
-//        while (queues.isEmpty())
-// TODO
+    void closeCheckout(int queueId) {
+        Optional<Queue> first = queues.stream().filter(queue -> queue.getQueueId() == queueId).findFirst();
+        first.ifPresent(queue -> queue.setMaxSize(0));
     }
 
-    protected void updateClient(ObjectInstanceHandle handle, int clientId, boolean isPrivileged, int endShoppingTime) {
+    void updateClient(ObjectInstanceHandle handle, int clientId, boolean isPrivileged, int endShoppingTime) {
         for (Client client : clients) {
             if (client.getRtiHandler().equals(handle)) {
                 client.setClientId(clientId);
@@ -313,8 +303,7 @@ public class QueueFederate {
         }
     }
 
-
-    protected void discoverClient(ObjectInstanceHandle client) {
+    void discoverClient(ObjectInstanceHandle client) {
         clients.add(new Client(client));
     }
 }

@@ -125,8 +125,9 @@ public class CheckoutFederate {
         publishAndSubscribe();
         log("Published and Subscribed");
 
-        prepareCheckoutToRegister();
 
+        registerNewCheckout(new Checkout(Checkout.count.get(), Checkout.count.getAndIncrement(), true));
+        System.out.println("*************************************************");
         while (fedamb.running) {
             advanceTime(1.0);
             log("Time Advanced to " + fedamb.federateTime);
@@ -146,18 +147,18 @@ public class CheckoutFederate {
         }
     }
 
-    private void sendStartServiceInteraction(int queueId, HLAfloat64Time time) throws RTIexception {
-        log("START SERVICE " + "@TODO");
+    private void sendStartServiceInteraction(int checkoutId, HLAfloat64Time time) throws RTIexception {
+        log("START SERVICE CHECKOUT: (" + checkoutId + ")");
         ParameterHandleValueMap parameterHandleValueMap = rtiamb.getParameterHandleValueMapFactory().create(2);
-        parameterHandleValueMap.put(startServiceCheckoutId, encoderFactory.createHLAinteger32BE(queueId).toByteArray());
+        parameterHandleValueMap.put(startServiceCheckoutId, encoderFactory.createHLAinteger32BE(checkoutId).toByteArray());
         parameterHandleValueMap.put(startServiceClientId, encoderFactory.createHLAinteger32BE(0).toByteArray());
         rtiamb.sendInteraction(startServiceInteractionHandle, parameterHandleValueMap, generateTag(), time);
     }
 
-    private void sendEndServiceInteraction(int queueId, HLAfloat64Time time) throws RTIexception {
-        log("END SERVICE " + "@TODO");
+    private void sendEndServiceInteraction(int checkoutId, HLAfloat64Time time) throws RTIexception {
+        log("END SERVICE: (" + checkoutId + ")");
         ParameterHandleValueMap parameterHandleValueMap = rtiamb.getParameterHandleValueMapFactory().create(2);
-        parameterHandleValueMap.put(endServiceCheckoutId, encoderFactory.createHLAinteger32BE(queueId).toByteArray());
+        parameterHandleValueMap.put(endServiceCheckoutId, encoderFactory.createHLAinteger32BE(checkoutId).toByteArray());
         parameterHandleValueMap.put(endServiceClientId, encoderFactory.createHLAinteger32BE(0).toByteArray());
         rtiamb.sendInteraction(endServiceInteractionHandle, parameterHandleValueMap, generateTag(), time);
     }
@@ -242,26 +243,32 @@ public class CheckoutFederate {
     }
 
     private void doThings() throws RTIexception {
+        checkoutsToMake.forEach(System.out::println);
+        checkouts.forEach(System.out::println);
+//        clients.forEach(System.out::println);
+        queues.forEach(System.out::println);
         HLAfloat64Time time = timeFactory.makeTime(fedamb.federateTime + fedamb.federateLookahead);
         for (Checkout checkout : checkoutsToMake) {
             registerNewCheckout(checkout);
         }
-        checkouts.clear();
+        checkoutsToMake.clear();
         if (checkouts.size() > 0) {
-            List<Checkout> openCheckouts = checkouts.stream().filter(Checkout::isOpen).collect(Collectors.toList());
-            log("open checkouts = " + openCheckouts);
-            if (!openCheckouts.isEmpty()) {
+//            List<Checkout> openCheckouts = checkouts.stream().filter(Checkout::isOpen).collect(Collectors.toList());
+//            log("open checkouts = " + openCheckouts);
+//            if (!openCheckouts.isEmpty()) {
 
                 if (!queues.isEmpty()) {
-                    for (Checkout checkout : openCheckouts) {
-                        Queue existingQueue = queues.get(checkout.getQueueId());
-                        if (existingQueue != null && existingQueue.getCurrentSize() > 1) {
+                    for (Checkout checkout : checkouts) {
+                        Optional<Queue> any = queues.stream()
+                                .filter(queue -> queue.getQueueId() == checkout.getQueueId()).findAny();
+                        if (any.isPresent() && any.get().getCurrentSize() > 1) {
                             // TODO konieczne > 1 bo najpierw wykonuje swoje dzialania
                             // a dopiero potem robi update od obcych federatow
-                            if (!queueNowServicingTime.containsKey(existingQueue.getQueueId())) {
-                                queueNowServicingTime.put(existingQueue.getQueueId(),
+                            if (!queueNowServicingTime.containsKey(any.get().getQueueId())) {
+                                if(any.get().getCurrentSize() > 0) {
+                                queueNowServicingTime.put(any.get().getQueueId(),
                                         fedamb.federateTime + random.nextInt(5));
-                                sendStartServiceInteraction(existingQueue.getQueueId(), time);
+                                sendStartServiceInteraction(any.get().getQueueId(), time);
                             }
                         }
 
@@ -269,11 +276,17 @@ public class CheckoutFederate {
                 }
             }
         }
+        List<Integer> toDeleteList = new ArrayList<>();
         for (Map.Entry<Integer, Double> integerDoubleEntry : queueNowServicingTime.entrySet()) {
             if (integerDoubleEntry.getValue() == fedamb.federateTime) {
-                queueNowServicingTime.remove(integerDoubleEntry.getKey());
+                //TODO nie wolno usuwac w petli, zapisz elementy ktore trzeba usunac
+                Integer key = integerDoubleEntry.getKey();
+                toDeleteList.add(key);
                 sendEndServiceInteraction(integerDoubleEntry.getKey(), time);
             }
+        }
+        for (Integer aDouble : toDeleteList) {
+            queueNowServicingTime.remove(aDouble);
         }
 
         for (Checkout checkout : checkouts) {
@@ -295,12 +308,6 @@ public class CheckoutFederate {
         checkout.setRtiHandler(objectInstanceHandle);
         System.out.println("CREATED: " + checkout);
         checkouts.add(checkout);
-    }
-
-    public void prepareCheckoutToRegister() {
-        Checkout checkout = new Checkout(Checkout.count.getAndIncrement(), 0, true, null);
-        checkoutsToMake.add(checkout);
-        System.out.println("TO CREATE: " + checkout);
     }
 
     private ObjectInstanceHandle registerObject() throws RTIexception {
@@ -338,4 +345,30 @@ public class CheckoutFederate {
         queues.add(new Queue(queueHandle));
     }
 
+    public void receiveOpenCheckoutInteraction(int checkoutId) {
+        Optional<Checkout> first = checkouts.stream()
+                .filter(checkout -> checkout.getCheckoutId() == checkoutId).findFirst();
+        if (first.isPresent()) {
+            openExistingCheckout(first);
+        } else {
+            openNewCheckout();
+        }
+    }
+
+    private void openNewCheckout() {
+        int id = Checkout.count.getAndIncrement(); //TODO albo increment and get
+        Checkout checkout = new Checkout(id, id, true);
+        checkoutsToMake.add(checkout);
+        System.out.println("TO CREATE: " + checkout);
+    }
+
+    private void openExistingCheckout(Optional<Checkout> first) {
+        first.get().setOpen(true);
+        System.out.println("OPEN EXISTING CHECKOUT (" + first.get() + ")");
+    }
+
+    void closeCheckout(int checkoutId) {
+        checkouts.stream().filter(checkout -> checkout.getCheckoutId() == checkoutId).findFirst()
+                .ifPresent(checkout -> checkout.setOpen(false));
+    }
 }

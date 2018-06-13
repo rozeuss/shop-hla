@@ -2,7 +2,6 @@ package shop.rti.statistic;
 
 import hla.rti1516e.*;
 import hla.rti1516e.exceptions.FederateInternalError;
-import shop.utils.TimeUtils;
 
 import java.util.Arrays;
 
@@ -61,19 +60,19 @@ public class StatisticAmbassador extends NullFederateAmbassador {
      */
     @Override
     public void timeRegulationEnabled(LogicalTime time) {
-        this.federateTime = TimeUtils.convertTime(time);
-        this.isRegulating = true;
+//        this.federateTime = TimeUtils.convertTime(time);
+//        this.isRegulating = true;
     }
 
     @Override
     public void timeConstrainedEnabled(LogicalTime time) {
-        this.federateTime = TimeUtils.convertTime(time);
-        this.isConstrained = true;
+//        this.federateTime = TimeUtils.convertTime(time);
+//        this.isConstrained = true;
     }
 
     @Override
     public void timeAdvanceGrant(LogicalTime time) {
-        this.grantedTime = TimeUtils.convertTime(time);
+//        this.grantedTime = TimeUtils.convertTime(time);
         this.isAdvancing = false;
     }
 
@@ -174,7 +173,7 @@ public class StatisticAmbassador extends NullFederateAmbassador {
         } else {
             log(" UNDEFINED ");
         }
-        log(builder.toString());
+//        log(builder.toString());
     }
 
     @Override

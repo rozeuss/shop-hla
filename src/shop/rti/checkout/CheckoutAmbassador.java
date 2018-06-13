@@ -108,7 +108,6 @@ public class CheckoutAmbassador extends NullFederateAmbassador {
                                        LogicalTime time, OrderType receivedOrdering,
                                        SupplementalReflectInfo reflectInfo)
             throws FederateInternalError {
-        //TODO EncodingHelpers nie jest ze standardu ieee
         StringBuilder builder = new StringBuilder("Reflection for object:");
 
         if (federate.instanceClassMap.get(theObject).equals(federate.clientObjectHandle)) {
@@ -215,29 +214,36 @@ public class CheckoutAmbassador extends NullFederateAmbassador {
                                    LogicalTime time, OrderType receivedOrdering, SupplementalReceiveInfo receiveInfo)
             throws FederateInternalError {
         StringBuilder builder = new StringBuilder("Interaction Received:");
-        builder.append(" *interactionClass* ").append(interactionClass);
-        builder.append(" *theParameters* ").append(theParameters);
-        builder.append(" *tag* ").append(Arrays.toString(tag));
-        builder.append(" *sentOrdering* ").append(sentOrdering);
-        builder.append(" *theTransport* ").append(theTransport);
-        builder.append(" *time* ").append(time);
-        builder.append(" *receivedOrdering* ").append(receivedOrdering);
-        builder.append(" *receiveInfo* ").append(receiveInfo);
         if (interactionClass.equals(federate.openCheckoutInteractionHandle)) {
-            federate.prepareCheckoutToRegister();
-        } else if (interactionClass.equals(federate.startServiceInteractionHandle)) {
-            builder.append("startServiceInteractionHandle");
-            //TODO
+            builder.append("openCheckoutInteractionHandle");
+            int checkoutId = 0;
+            for (ParameterHandle parameterHandle : theParameters.keySet()) {
+                builder.append("\tparameter=");
+                if (parameterHandle.equals(federate.openCheckoutCheckoutId)) {
+                    builder.append(parameterHandle);
+                    builder.append(" checkoutId:");
+                    builder.append(DecoderUtils.decodeInt(federate.encoderFactory, theParameters.getValueReference(parameterHandle)));
+                    checkoutId = DecoderUtils.decodeInt(federate.encoderFactory, theParameters.getValueReference(parameterHandle));
+                }
+            }
+            federate.receiveOpenCheckoutInteraction(checkoutId);
         } else if (interactionClass.equals(federate.closeCheckoutInteractionHandle)) {
             builder.append("closeCheckoutInteractionHandle");
-            //TODO
-        } else if (interactionClass.equals(federate.endServiceInteractionHandle)) {
-            builder.append("endServiceInteractionHandle");
-            //TODO
+            int checkoutId = 0;
+            for (ParameterHandle parameterHandle : theParameters.keySet()) {
+                builder.append("\tparameter=");
+                if (parameterHandle.equals(federate.closeCheckoutCheckoutId)) {
+                    builder.append(parameterHandle);
+                    builder.append(" checkoutId:");
+                    builder.append(DecoderUtils.decodeInt(federate.encoderFactory, theParameters.getValueReference(parameterHandle)));
+                    checkoutId = DecoderUtils.decodeInt(federate.encoderFactory, theParameters.getValueReference(parameterHandle));
+                }
+            }
+            federate.closeCheckout(checkoutId);
         } else {
             log(" UNDEFINED ");
         }
-        log(builder.toString());
+//        log(builder.toString());
     }
 
     @Override

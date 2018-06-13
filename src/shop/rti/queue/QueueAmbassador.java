@@ -1,7 +1,5 @@
-
 package shop.rti.queue;
 
-import hla.rti.jlc.EncodingHelpers;
 import hla.rti1516e.*;
 import hla.rti1516e.exceptions.FederateInternalError;
 import hla.rti1516e.time.HLAfloat64Time;
@@ -78,8 +76,6 @@ public class QueueAmbassador extends NullFederateAmbassador {
     public void discoverObjectInstance(ObjectInstanceHandle theObject,
                                        ObjectClassHandle theObjectClass,
                                        String objectName) throws FederateInternalError {
-        log("Discovered Object: handle=" + theObject + ", classHandle=" +
-                theObjectClass + ", name=" + objectName);
         this.federate.instanceClassMap.put(theObject, theObjectClass);
         if (theObjectClass.equals(this.federate.clientObjectHandle)) {
             this.federate.discoverClient(theObject);
@@ -110,12 +106,7 @@ public class QueueAmbassador extends NullFederateAmbassador {
                                        LogicalTime time, OrderType receivedOrdering,
                                        SupplementalReflectInfo reflectInfo)
             throws FederateInternalError {
-        //TODO EncodingHelpers nie jest ze standardu ieee
-        String decodedTag = EncodingHelpers.decodeString(tag);
-
-
         if (federate.instanceClassMap.get(theObject).equals(federate.clientObjectHandle)) {
-
             for (int i = 0; i < federate.clients.size(); i++) {
                 if (theObject.equals(federate.clients.get(i).getRtiHandler())) {
                     int clientId = 0;
@@ -190,7 +181,17 @@ public class QueueAmbassador extends NullFederateAmbassador {
         builder.append(" *receiveInfo* ").append(receiveInfo);
         if (interactionClass.equals(federate.openCheckoutInteractionHandle)) {
             builder.append("openCheckoutInteractionHandle");
-            federate.prepareQueueToRegister();
+            int checkoutId = 0;
+            for (ParameterHandle parameterHandle : theParameters.keySet()) {
+                builder.append("\tparameter=");
+                if (parameterHandle.equals(federate.openCheckoutCheckoutId)) {
+                    builder.append(parameterHandle);
+                    builder.append(" checkoutId:");
+                    builder.append(DecoderUtils.decodeInt(federate.encoderFactory, theParameters.getValueReference(parameterHandle)));
+                    checkoutId = DecoderUtils.decodeInt(federate.encoderFactory, theParameters.getValueReference(parameterHandle));
+                }
+            }
+            federate.receiveOpenCheckoutInteraction(checkoutId);
         } else if (interactionClass.equals(federate.chooseQueueInteractionHandle)) {
             builder.append("chooseQueueInteractionHandle");
             int queueId = 0;

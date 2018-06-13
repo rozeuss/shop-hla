@@ -10,7 +10,6 @@ import shop.utils.DecoderUtils;
 @SuppressWarnings("Duplicates")
 public class ManagerAmbassador extends NullFederateAmbassador {
 
-
     protected boolean running = true;
     protected double federateTime = 0.0;
     protected double federateLookahead = 1.0;
@@ -56,9 +55,6 @@ public class ManagerAmbassador extends NullFederateAmbassador {
             this.isReadyToRun = true;
     }
 
-    /**
-     * The RTI has informed us that time regulation is now enabled.
-     */
     @Override
     public void timeRegulationEnabled(LogicalTime time) {
         this.federateTime = ((HLAfloat64Time) time).getValue();
@@ -124,7 +120,6 @@ public class ManagerAmbassador extends NullFederateAmbassador {
             throws FederateInternalError {
         StringBuilder builder = new StringBuilder("Reflection for object:");
         if (federate.instanceClassMap.get(theObject).equals(federate.clientObjectHandle)) {
-
             for (int i = 0; i < federate.clients.size(); i++) {
                 if (theObject.equals(federate.clients.get(i).getRtiHandler())) {
                     int clientId = 0;
@@ -160,9 +155,7 @@ public class ManagerAmbassador extends NullFederateAmbassador {
 
                         builder.append("\n");
                     }
-
 //                    log(builder.toString());
-
                     this.federate.updateClient(theObject, clientId, isPrivileged, endShoppingTime);
                 }
             }
@@ -280,7 +273,27 @@ public class ManagerAmbassador extends NullFederateAmbassador {
                                    SupplementalReceiveInfo receiveInfo)
             throws FederateInternalError {
         StringBuilder builder = new StringBuilder("Interaction Received:");
-        log(builder.toString());
+        if (interactionClass.equals(federate.endServiceInteractionHandle)) {
+            builder.append("endServiceInteractionHandle");
+            int checkoutId = 0;
+            int clientId = 0;
+            for (ParameterHandle parameterHandle : theParameters.keySet()) {
+                builder.append("\tparameter=");
+                if (parameterHandle.equals(federate.endServiceCheckoutId)) {
+                    builder.append(parameterHandle);
+                    builder.append(" checkoutId:");
+                    builder.append(DecoderUtils.decodeInt(federate.encoderFactory, theParameters.getValueReference(parameterHandle)));
+                    checkoutId = DecoderUtils.decodeInt(federate.encoderFactory, theParameters.getValueReference(parameterHandle));
+
+                } else if (parameterHandle.equals(federate.endServiceClientId)) {
+                    builder.append(parameterHandle);
+                    builder.append(" clientId:");
+                    builder.append(DecoderUtils.decodeInt(federate.encoderFactory, theParameters.getValueReference(parameterHandle)));
+                    clientId = DecoderUtils.decodeInt(federate.encoderFactory, theParameters.getValueReference(parameterHandle));
+                }
+            }
+            federate.receiveEndServiceInteraction(checkoutId, clientId);
+        }
     }
 
     @Override
@@ -289,7 +302,6 @@ public class ManagerAmbassador extends NullFederateAmbassador {
                                      OrderType sentOrdering,
                                      SupplementalRemoveInfo removeInfo)
             throws FederateInternalError {
-        log("Object Removed: handle=" + theObject);
     }
 
 }

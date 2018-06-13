@@ -11,7 +11,6 @@ import hla.rti1516e.time.HLAfloat64TimeFactory;
 import shop.object.Checkout;
 import shop.object.Client;
 import shop.object.Queue;
-import shop.utils.TimeUtils;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -199,9 +198,9 @@ public class StatisticFederate {
     }
 
     private void advanceTime(double timestep) throws RTIexception {
-        fedamb.isAdvancing = true;
-        LogicalTime logicalTime = TimeUtils.convertTime(timestep);
-        rtiamb.timeAdvanceRequest(logicalTime);
+//        fedamb.isAdvancing = true;
+//        rtiamb.timeAdvanceRequest(timestep);
+//        TODO
         while (fedamb.isAdvancing) {
             rtiamb.evokeMultipleCallbacks(0.1, 0.2);
         }
