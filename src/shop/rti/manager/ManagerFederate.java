@@ -117,13 +117,14 @@ public class ManagerFederate {
         publishAndSubscribe();
         log("Published and Subscribed");
 
-
+        System.out.println("***************************************************" +
+                "***********************************************");
         while (fedamb.running) {
             advanceTime(1.0);
+            System.out.println();
             log("Time Advanced to " + fedamb.federateTime);
             doThings();
         }
-
         cleanUpAfterSimulation();
     }
 
@@ -140,15 +141,14 @@ public class ManagerFederate {
         }
     }
 
-
     private void enableTimePolicy() throws Exception {
         HLAfloat64Interval lookahead = timeFactory.makeInterval(fedamb.federateLookahead);
         this.rtiamb.enableTimeRegulation(lookahead);
-        while (fedamb.isRegulating == false) {
+        while (!fedamb.isRegulating) {
             rtiamb.evokeMultipleCallbacks(0.1, 0.2);
         }
         this.rtiamb.enableTimeConstrained();
-        while (fedamb.isConstrained == false) {
+        while (!fedamb.isConstrained) {
             rtiamb.evokeMultipleCallbacks(0.1, 0.2);
         }
     }
@@ -202,7 +202,6 @@ public class ManagerFederate {
         endServiceCheckoutId = rtiamb.getParameterHandle(endServiceInteractionHandle, "checkoutId");
         endServiceClientId = rtiamb.getParameterHandle(endServiceInteractionHandle, "clientId");
         rtiamb.subscribeInteractionClass(endServiceInteractionHandle);
-
     }
 
     private void advanceTime(double timestep) throws RTIexception {
@@ -217,8 +216,6 @@ public class ManagerFederate {
     private void doThings() throws RTIexception {
         queues.forEach(System.out::println);
         checkouts.forEach(System.out::println);
-//        clients.forEach(System.out::println);
-
         HLAfloat64Time time = timeFactory.makeTime(fedamb.federateTime + fedamb.federateLookahead);
         boolean hasBeenOpen = false;
         int queuesMaxSizeSum = queues.stream().mapToInt(Queue::getMaxSize).sum();
@@ -235,41 +232,23 @@ public class ManagerFederate {
                 hasBeenOpen = true;
             }
         }
-        if (checkouts.size() > 1) {
+        List<Checkout> collect = checkouts.stream().filter(Checkout::isOpen).collect(Collectors.toList());
+        if (collect.size() > 1) {
             if (!hasBeenOpen) {
                 List<Queue> emptyQueues = queues.stream()
-                        .filter(queue -> queue.getCurrentSize() == 0).collect(Collectors.toList());
+                        .filter(queue -> queue.getCurrentSize() < 2).collect(Collectors.toList());
                 for (Checkout checkout : checkouts) {
                     for (Queue emptyQueue : emptyQueues) {
                         if (checkout.getQueueId() == emptyQueue.getQueueId()) {
-                            if (checkout.isOpen()) {
+                            if (checkout.isOpen() && (queuesMaxSizeSum < (clients.size() - emptyQueue.getMaxSize()))) {
                                 sendCloseCheckoutInteraction(emptyQueue.getQueueId(), time);
                                 emptyQueue.setMaxSize(0);
                             }
                         }
                     }
-
                 }
-
             }
-
         }
-
-////        TODO ZAMKNIECIE KASY NIE DZIALA
-//        if (!hasBeenOpen) {
-//            List<Queue> toClose = queues.stream().filter(queue -> queue.getCurrentSize() == 0).collect(Collectors.toList());
-//            List<Checkout> collect = checkouts.stream().filter(checkout -> checkout.isOpen()).collect(Collectors.toList());
-//            for (Queue queue : toClose) {
-//                if(collect.stream().anyMatch(checkout -> checkout.getCheckoutId() == queue.getQueueId())){
-//                    if (queuesToClose.contains(queue)) {
-//                        queuesToClose.clear();
-//                        sendCloseCheckoutInteraction(queue.getQueueId(), time);
-//                        queue.setMaxSize(0);
-//                    }
-//                    queuesToClose.add(queue);
-//                }
-//            }
-//        }
     }
 
     private void sendCloseCheckoutInteraction(int checkoutId, HLAfloat64Time time) throws RTIexception {
@@ -294,7 +273,9 @@ public class ManagerFederate {
     void discoverClient(ObjectInstanceHandle clientHandle) {
         Client client = new Client(clientHandle);
         clients.add(client);
-        log("ARRIVED " + client + " size: " + clients.size() + " minus " + servicedClientsNo + " = " + (clients.size() - servicedClientsNo));
+        log("ARRIVED CLIENT");
+//        log("ARRIVED CLIENT size: " + clients.size() +
+//                " minus " + servicedClientsNo + " = " + (clients.size() - servicedClientsNo));
     }
 
     void discoverQueue(ObjectInstanceHandle queueHandle) {
@@ -323,29 +304,19 @@ public class ManagerFederate {
                 queue.setCurrentSize(queueCurrentSize);
             }
         }
-//        log("Updated queues " + queues);
     }
 
-    void updateCheckout(Checkout checkout) throws RTIexception {
-        int index = -1;
-        for (int i = 0; i < checkouts.size(); i++) {
-            if (checkouts.get(i).getRtiHandler().equals(checkout.getRtiHandler()))
-                index = i;
-        }
-        if (index != -1) {
-            Checkout checkoutToUpdate = checkouts.get(index);
-            if (checkoutToUpdate.getCheckoutId() == 0 || checkoutToUpdate.getCheckoutId() == checkout.getCheckoutId()) {
-                checkoutToUpdate.setCheckoutId(checkout.getCheckoutId());
-                checkoutToUpdate.setQueueId(checkout.getQueueId());
-                checkoutToUpdate.setOpen(checkout.isOpen());
+    void updateCheckout(ObjectInstanceHandle handle, int checkoutId, boolean open, int queueId) {
+        for (Checkout queue : checkouts) {
+            if (queue.getRtiHandler().equals(handle)) {
+                queue.setQueueId(queueId);
+                queue.setOpen(open);
+                queue.setCheckoutId(checkoutId);
             }
-            if (checkout.getQueueId() == -1)
-                checkouts.remove(checkoutToUpdate);
         }
-
     }
 
-    public void receiveEndServiceInteraction(int checkoutId, int clientId) {
+    void receiveEndServiceInteraction(int checkoutId, int clientId) {
         servicedClientsNo++;
     }
 }

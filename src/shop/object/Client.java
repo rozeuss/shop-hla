@@ -11,18 +11,19 @@ import java.util.concurrent.atomic.AtomicInteger;
 @AllArgsConstructor
 @NoArgsConstructor
 public class Client {
-
-    public enum State {SHOPPING, IN_CHECKOUT, END}
-
-    public static final int MAX_SHOPPING_TIME = 3;
     public static final AtomicInteger count = new AtomicInteger(0);
+    public static final int MAX_SHOPPING_TIME = 2;
+    public static final int CLIENT_ARRIVAL_PROBABILITY = 2;
+    public static final int PRIVILEGED_CLIENT_PROBABILITY = 3;
 
+    //FOM VARIABLES
     int clientId;
     boolean isPrivileged;
     int endShoppingTime;
+    //ADDITIONAL VARIABLES
     private ObjectInstanceHandle rtiHandler;
-    boolean waitingInQueue;
-    int chosenCheckoutNumber = -999; //TODO
+    private boolean waitingInQueue;
+    private int arrivalTime = -1;
 
     public Client(ObjectInstanceHandle rtiHandler) {
         this.rtiHandler = rtiHandler;

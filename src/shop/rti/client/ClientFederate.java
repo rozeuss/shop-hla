@@ -21,11 +21,14 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
+import static shop.object.Client.CLIENT_ARRIVAL_PROBABILITY;
+import static shop.object.Client.PRIVILEGED_CLIENT_PROBABILITY;
+
 @SuppressWarnings("Duplicates")
 public class ClientFederate {
 
     public static final String READY_TO_RUN = "ReadyToRun";
-    private static final int CLIENT_ARRIVAL_PROBABILITY = 2;
+
     protected EncoderFactory encoderFactory;
     AttributeHandle queueId;
     ObjectClassHandle clientObjectHandle;
@@ -116,13 +119,12 @@ public class ClientFederate {
         publishAndSubscribe();
         log("Published and Subscribed");
 
-//        for (int i = 0; i < 4; i++) {
-//            createClientObject();
-//        }
-
+        System.out.println("***************************************************" +
+                "***********************************************");
         while (fedamb.running) {
-            TimeUnit.SECONDS.sleep(1);
+            TimeUnit.MILLISECONDS.sleep(500);
             advanceTime(1.0);
+            System.out.println();
             log("Time Advanced to " + fedamb.federateTime);
             doThings();
         }
@@ -215,34 +217,28 @@ public class ClientFederate {
         rtiamb.updateAttributeValues(client.getRtiHandler(), attributes, generateTag(), time);
     }
 
-
-
     private void doThings() throws RTIexception {
         queues.forEach(System.out::println);
-//        clients.forEach(System.out::println);
         checkouts.forEach(System.out::println);
         HLAfloat64Time time = timeFactory.makeTime(fedamb.federateTime + fedamb.federateLookahead);
-        Queue queue = queues.stream().min(Comparator.comparingInt(Queue::getCurrentSize)).orElse(null);
         List<Client> shoppingClients = clients.stream()
                 .filter(((Predicate<Client>) Client::isWaitingInQueue).negate())
                 .collect(Collectors.toList());
-        for (Client client : shoppingClients) {
-            if (hasClientFinishedShopping(client.getEndShoppingTime())) {
-                if (queue != null) {
-                    if (queue.getMaxSize()> (queue.getCurrentSize() + 1)) {
-                        if (!shoppingClients.isEmpty()) {
-                            sendChooseQueueInteraction(queue, client, time);
-                            queue.setCurrentSize(queue.getCurrentSize() + 1);
-//                            if (!client.isPrivileged()) {
-//                                queue.getClients().add(client);
-//                            } else {
-//                                queue.getClients().add(0, client);
-//                            }
-                            client.setWaitingInQueue(true);
-                        }
-                    }
+        List<Client> endShoppingClients = shoppingClients.stream()
+                .filter(client -> hasClientFinishedShopping(client.getEndShoppingTime()))
+                .collect(Collectors.toList());
+        for (Client client : endShoppingClients) {
+            List<Queue> openQueues = queues.stream()
+                    .filter(queue -> queue.getMaxSize() > 0)
+                    .sorted(Comparator.comparing(Queue::getCurrentSize))
+                    .collect(Collectors.toList());
+            for (Queue queue : openQueues) {
+                if (queue.getMaxSize() > queue.getCurrentSize() + 1) {
+                    sendChooseQueueInteraction(queue, client, time);
+                    queue.setCurrentSize(queue.getCurrentSize() + 1);
+                    client.setWaitingInQueue(true);
+                    break;
                 }
-
             }
         }
         boolean hasClientArrived = random.nextInt(CLIENT_ARRIVAL_PROBABILITY) == 0;
@@ -259,7 +255,7 @@ public class ClientFederate {
     }
 
     private void sendChooseQueueInteraction(Queue queue, Client client, HLAfloat64Time time) throws RTIexception {
-        log("CLIENT (" + client + ") " + "CHOOSING QUEUE (" + queue.getQueueId() + ")");
+        log("CLIENT (" + client.getClientId() + ") " + "CHOOSING QUEUE (" + queue.getQueueId() + ")" + " " + client);
         ParameterHandleValueMap parameterHandleValueMap = rtiamb.getParameterHandleValueMapFactory().create(2);
         parameterHandleValueMap.put(chooseQueueCheckoutId, encoderFactory.createHLAinteger32BE(queue.getQueueId()).toByteArray());
         parameterHandleValueMap.put(chooseQueueClientId, encoderFactory.createHLAinteger32BE(client.getClientId()).toByteArray());
@@ -280,10 +276,6 @@ public class ClientFederate {
         rtiamb.deleteObjectInstance(handle, generateTag(), time);
     }
 
-    private short getTimeAsShort() {
-        return (short) fedamb.federateTime;
-    }
-
     private byte[] generateTag() {
         return ("(timestamp) " + System.currentTimeMillis()).getBytes();
     }
@@ -299,7 +291,9 @@ public class ClientFederate {
         client.setRtiHandler(clientInstanceHandle);
         client.setClientId(Client.count.getAndIncrement());
         client.setEndShoppingTime(random.nextInt(Client.MAX_SHOPPING_TIME) + 1 + (int) fedamb.federateTime);
-        client.setPrivileged(random.nextBoolean());
+        if (random.nextInt(PRIVILEGED_CLIENT_PROBABILITY) == 0) {
+            client.setPrivileged(true);
+        }
         log("NEW CLIENT ARRIVED: " + client.toString());
         clients.add(client);
     }
@@ -315,17 +309,8 @@ public class ClientFederate {
     }
 
     void serviceClient(int checkoutId, int clientId, LogicalTime time) {
-        log("CLIENT SERVICED (" + clientId + ")");
-//        Optional<Queue> first = queues.stream().filter(queue -> queue.getQueueId() == checkoutId).findFirst();
-//        first.get().getClients().remo
+        log("CLIENT SERVICED (" + checkoutId + ")");
         //TODO
-//        Client client = clients.get(clientId);
-//        try {
-//            deleteObject(client.getRtiHandler(), time);
-//        } catch (RTIexception rtIexception) {
-//            rtIexception.printStackTrace();
-//        }
-//        clients.remove(client);
     }
 
     void updateQueue(ObjectInstanceHandle handle, int queueId, int queueMaxSize, int queueCurrentSize) {

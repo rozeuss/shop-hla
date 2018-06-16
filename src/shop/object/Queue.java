@@ -14,16 +14,16 @@ import java.util.concurrent.atomic.AtomicInteger;
 @NoArgsConstructor
 public class Queue {
     public static final AtomicInteger count = new AtomicInteger(0);
-//    public static final int INITIAL_SIZE = 0;
-    public static final int MAX_SIZE = 10;
+    public static final int MAX_SIZE = 8;
 
-    private int queueId;
-    private int maxSize;
-    private int currentSize = 0;
+    //FOM VARIABLES
+    int queueId;
+    int maxSize;
+    int currentSize = 0;
+    //ADDITIONAL VARIABLES
     private int originalMaxSize;
     private ObjectInstanceHandle rtiHandler;
     private List<Client> clients = new LinkedList<>();
-//    private boolean available = true;
 
     public Queue(ObjectInstanceHandle rtiHandler) {
         this.rtiHandler = rtiHandler;

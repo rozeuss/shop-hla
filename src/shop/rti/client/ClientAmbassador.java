@@ -2,9 +2,7 @@ package shop.rti.client;
 
 import hla.rti1516e.*;
 import hla.rti1516e.exceptions.FederateInternalError;
-import hla.rti1516e.exceptions.RTIexception;
 import hla.rti1516e.time.HLAfloat64Time;
-import shop.object.Checkout;
 import shop.utils.DecoderUtils;
 
 @SuppressWarnings("Duplicates")
@@ -19,10 +17,9 @@ public class ClientAmbassador extends NullFederateAmbassador {
     protected boolean isReadyToRun = false;
     private ClientFederate federate;
 
-    public ClientAmbassador(ClientFederate federate) {
+    ClientAmbassador(ClientFederate federate) {
         this.federate = federate;
     }
-
 
     private void log(String message) {
         System.out.println("ClientAmbassador: " + message);
@@ -81,15 +78,11 @@ public class ClientAmbassador extends NullFederateAmbassador {
         this.federate.instanceClassMap.put(theObject, theObjectClass);
         if (theObjectClass.equals(this.federate.checkoutObjectHandle)) {
             builder.append("CHECKOUT");
-//            log("Discoverd Object: handle=" + theObject + ", classHandle=" +
-//                    theObjectClass + ", name=" + objectName);
             builder.append(" handle=" + theObject);
             builder.append("\n");
             this.federate.addNewCheckout(theObject);
         } else if (theObjectClass.equals(this.federate.queueObjectHandle)) {
             builder.append("QUEUE");
-//            log("Discoverd Object: handle=" + theObject + ", classHandle=" +
-//                    theObjectClass + ", name=" + objectName);
             builder.append(" handle=" + theObject);
             builder.append("\n");
             this.federate.addNewQueue(theObject);
@@ -128,84 +121,69 @@ public class ClientAmbassador extends NullFederateAmbassador {
                                        OrderType receivedOrdering,
                                        SupplementalReflectInfo reflectInfo)
             throws FederateInternalError {
-
-
         StringBuilder builder = new StringBuilder("Reflection for object:");
         if (federate.instanceClassMap.get(theObject).equals(federate.checkoutObjectHandle)) {
-//            for (int i = 0; i < federate.checkouts.size(); i++) {
-//                if (theObject.equals(federate.checkouts.get(i).getRtiHandler())) {
-                    int checkoutId = 0;
-                    int checkoutQueueId = 0;
-                    boolean checkoutIsOpened = false;
-                    builder.append("CHECKOUT");
-                    builder.append(" handle=" + theObject);
-                    builder.append(", attributeCount=" + theAttributes.size());
-                    builder.append("\n");
-                    for (AttributeHandle attributeHandle : theAttributes.keySet()) {
-                        builder.append("\tattributeHandle=");
-                        if (attributeHandle.equals(federate.checkoutId)) {
-                            builder.append(attributeHandle);
-                            builder.append(" checkoutId:");
-                            builder.append(DecoderUtils.decodeInt(federate.encoderFactory, theAttributes.getValueReference(attributeHandle)));
-                            checkoutId = DecoderUtils.decodeInt(federate.encoderFactory, theAttributes.getValueReference(attributeHandle));
-                        } else if (attributeHandle.equals(federate.checkoutQueueId)) {
-                            builder.append(attributeHandle);
-                            builder.append(" checkoutQueueId:");
-                            builder.append(DecoderUtils.decodeInt(federate.encoderFactory, theAttributes.getValueReference(attributeHandle)));
-                            checkoutQueueId = DecoderUtils.decodeInt(federate.encoderFactory, theAttributes.getValueReference(attributeHandle));
-                        } else if (attributeHandle.equals(federate.checkoutIsOpened)) {
-                            builder.append(attributeHandle);
-                            builder.append(" checkoutIsOpened:");
-                            builder.append(DecoderUtils.decodeBoolean(federate.encoderFactory, theAttributes.getValueReference(attributeHandle)));
-                            checkoutIsOpened = DecoderUtils.decodeBoolean(federate.encoderFactory, theAttributes.getValueReference(attributeHandle));
-                        } else {
-                            builder.append(attributeHandle);
-                            builder.append(" (Unknown)   ");
-                        }
-                        builder.append("\n");
-                    }
-                    federate.updateCheckout(theObject, checkoutId, checkoutIsOpened, checkoutQueueId);
-//                }
-//            }
-        } else if (federate.instanceClassMap.get(theObject).equals(federate.queueObjectHandle)) {
-            // TODO petle chyba niepotrzebne ehhh
-//            for (int i = 0; i < federate.queues.size(); i++) {
-//                if (theObject.equals(federate.queues.get(i).getRtiHandler())) {
-                    int queueId = 0;
-                    int queueCurrentSize = 0;
-                    int queueMaxSize = 0;
-                    builder.append("CHECKOUT");
-                    builder.append(" handle=" + theObject);
-                    builder.append(", attributeCount=" + theAttributes.size());
-                    builder.append("\n");
-                    for (AttributeHandle attributeHandle : theAttributes.keySet()) {
-                        builder.append("\tattributeHandle=");
-                        if (attributeHandle.equals(federate.queueId)) {
-                            builder.append(attributeHandle);
-                            builder.append(" queueId:");
-                            builder.append(DecoderUtils.decodeInt(federate.encoderFactory, theAttributes.getValueReference(attributeHandle)));
-                            queueId = DecoderUtils.decodeInt(federate.encoderFactory, theAttributes.getValueReference(attributeHandle));
-                        } else if (attributeHandle.equals(federate.queueCurrentSize)) {
-                            builder.append(attributeHandle);
-                            builder.append(" queueCurrentSize:");
-                            builder.append(DecoderUtils.decodeInt(federate.encoderFactory, theAttributes.getValueReference(attributeHandle)));
-                            queueCurrentSize = DecoderUtils.decodeInt(federate.encoderFactory, theAttributes.getValueReference(attributeHandle));
-                        } else if (attributeHandle.equals(federate.queueMaxSize)) {
-                            builder.append(attributeHandle);
-                            builder.append(" queueMaxSize:");
-                            builder.append(DecoderUtils.decodeBoolean(federate.encoderFactory, theAttributes.getValueReference(attributeHandle)));
-                            queueMaxSize = DecoderUtils.decodeInt(federate.encoderFactory, theAttributes.getValueReference(attributeHandle));
-                        } else {
-                            builder.append(attributeHandle);
-                            builder.append(" (Unknown)   ");
-                        }
-                        builder.append("\n");
-                    }
-                    federate.updateQueue(theObject, queueId, queueMaxSize, queueCurrentSize);
-
+            int checkoutId = 0;
+            int checkoutQueueId = 0;
+            boolean checkoutIsOpened = false;
+            builder.append("CHECKOUT");
+            builder.append(" handle=" + theObject);
+            builder.append(", attributeCount=" + theAttributes.size());
+            builder.append("\n");
+            for (AttributeHandle attributeHandle : theAttributes.keySet()) {
+                builder.append("\tattributeHandle=");
+                if (attributeHandle.equals(federate.checkoutId)) {
+                    builder.append(attributeHandle);
+                    builder.append(" checkoutId:");
+                    builder.append(DecoderUtils.decodeInt(federate.encoderFactory, theAttributes.getValueReference(attributeHandle)));
+                    checkoutId = DecoderUtils.decodeInt(federate.encoderFactory, theAttributes.getValueReference(attributeHandle));
+                } else if (attributeHandle.equals(federate.checkoutQueueId)) {
+                    builder.append(attributeHandle);
+                    builder.append(" checkoutQueueId:");
+                    builder.append(DecoderUtils.decodeInt(federate.encoderFactory, theAttributes.getValueReference(attributeHandle)));
+                    checkoutQueueId = DecoderUtils.decodeInt(federate.encoderFactory, theAttributes.getValueReference(attributeHandle));
+                } else if (attributeHandle.equals(federate.checkoutIsOpened)) {
+                    builder.append(attributeHandle);
+                    builder.append(" checkoutIsOpened:");
+                    builder.append(DecoderUtils.decodeBoolean(federate.encoderFactory, theAttributes.getValueReference(attributeHandle)));
+                    checkoutIsOpened = DecoderUtils.decodeBoolean(federate.encoderFactory, theAttributes.getValueReference(attributeHandle));
                 }
-//            }
-//        }
+                builder.append("\n");
+            }
+            federate.updateCheckout(theObject, checkoutId, checkoutIsOpened, checkoutQueueId);
+        } else if (federate.instanceClassMap.get(theObject).equals(federate.queueObjectHandle)) {
+            int queueId = 0;
+            int queueCurrentSize = 0;
+            int queueMaxSize = 0;
+            builder.append("CHECKOUT");
+            builder.append(" handle=" + theObject);
+            builder.append(", attributeCount=" + theAttributes.size());
+            builder.append("\n");
+            for (AttributeHandle attributeHandle : theAttributes.keySet()) {
+                builder.append("\tattributeHandle=");
+                if (attributeHandle.equals(federate.queueId)) {
+                    builder.append(attributeHandle);
+                    builder.append(" queueId:");
+                    builder.append(DecoderUtils.decodeInt(federate.encoderFactory, theAttributes.getValueReference(attributeHandle)));
+                    queueId = DecoderUtils.decodeInt(federate.encoderFactory, theAttributes.getValueReference(attributeHandle));
+                } else if (attributeHandle.equals(federate.queueCurrentSize)) {
+                    builder.append(attributeHandle);
+                    builder.append(" queueCurrentSize:");
+                    builder.append(DecoderUtils.decodeInt(federate.encoderFactory, theAttributes.getValueReference(attributeHandle)));
+                    queueCurrentSize = DecoderUtils.decodeInt(federate.encoderFactory, theAttributes.getValueReference(attributeHandle));
+                } else if (attributeHandle.equals(federate.queueMaxSize)) {
+                    builder.append(attributeHandle);
+                    builder.append(" queueMaxSize:");
+                    builder.append(DecoderUtils.decodeBoolean(federate.encoderFactory, theAttributes.getValueReference(attributeHandle)));
+                    queueMaxSize = DecoderUtils.decodeInt(federate.encoderFactory, theAttributes.getValueReference(attributeHandle));
+                } else {
+                    builder.append(attributeHandle);
+                    builder.append(" (Unknown)   ");
+                }
+                builder.append("\n");
+            }
+            federate.updateQueue(theObject, queueId, queueMaxSize, queueCurrentSize);
+        }
 //        log(builder.toString());
     }
 
@@ -255,7 +233,6 @@ public class ClientAmbassador extends NullFederateAmbassador {
                     builder.append(" checkoutId:");
                     builder.append(DecoderUtils.decodeInt(federate.encoderFactory, theParameters.getValueReference(parameterHandle)));
                     checkoutId = DecoderUtils.decodeInt(federate.encoderFactory, theParameters.getValueReference(parameterHandle));
-
                 } else if (parameterHandle.equals(federate.startServiceClientIdParameter)) {
                     builder.append(parameterHandle);
                     builder.append(" clientId:");
@@ -265,7 +242,6 @@ public class ClientAmbassador extends NullFederateAmbassador {
             }
             federate.serviceClient(checkoutId, clientId, time);
         }
-//        log(builder.toString());
     }
 
     @Override

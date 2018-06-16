@@ -107,46 +107,41 @@ public class QueueAmbassador extends NullFederateAmbassador {
                                        SupplementalReflectInfo reflectInfo)
             throws FederateInternalError {
         if (federate.instanceClassMap.get(theObject).equals(federate.clientObjectHandle)) {
-            for (int i = 0; i < federate.clients.size(); i++) {
-                if (theObject.equals(federate.clients.get(i).getRtiHandler())) {
-                    int clientId = 0;
-                    int endShoppingTime = 0;
-                    boolean isPrivileged = false;
-                    StringBuilder builder = new StringBuilder("Reflection for object:");
-                    builder.append(" handle=" + theObject);
-                    builder.append(", attributeCount=" + theAttributes.size());
-                    builder.append("\n");
-                    for (AttributeHandle attributeHandle : theAttributes.keySet()) {
-                        builder.append("\tattributeHandle=");
-                        if (attributeHandle.equals(federate.clientId)) {
-                            builder.append(attributeHandle);
-                            builder.append(" id:");
-                            int val = DecoderUtils.decodeInt(federate.encoderFactory, theAttributes.getValueReference(attributeHandle));
-                            builder.append(val);
-                            clientId = val;
-                        } else if (attributeHandle.equals(federate.clientEndShoppingTime)) {
-                            builder.append(attributeHandle);
-                            builder.append(" endShoppingTime:");
-                            int val = DecoderUtils.decodeInt(federate.encoderFactory, theAttributes.getValueReference(attributeHandle));
-                            builder.append(val);
-                            endShoppingTime = val;
-                        } else if (attributeHandle.equals(federate.clientIsPrivileged)) {
-                            builder.append(attributeHandle);
-                            builder.append(" isPrivileged:");
-                            boolean val = DecoderUtils.decodeBoolean(federate.encoderFactory, theAttributes.getValueReference(attributeHandle));
-                            builder.append(val);
-                            isPrivileged = val;
-                        } else {
-                            builder.append(attributeHandle);
-                            builder.append(" (Unknown)   ");
-                        }
-
-                        builder.append("\n");
-                    }
-//                    log(builder.toString());
-                    this.federate.updateClient(theObject, clientId, isPrivileged, endShoppingTime);
+            int clientId = 0;
+            int endShoppingTime = 0;
+            boolean isPrivileged = false;
+            StringBuilder builder = new StringBuilder("Reflection for object:");
+            builder.append(" handle=" + theObject);
+            builder.append(", attributeCount=" + theAttributes.size());
+            builder.append("\n");
+            for (AttributeHandle attributeHandle : theAttributes.keySet()) {
+                builder.append("\tattributeHandle=");
+                if (attributeHandle.equals(federate.clientId)) {
+                    builder.append(attributeHandle);
+                    builder.append(" id:");
+                    int val = DecoderUtils.decodeInt(federate.encoderFactory, theAttributes.getValueReference(attributeHandle));
+                    builder.append(val);
+                    clientId = val;
+                } else if (attributeHandle.equals(federate.clientEndShoppingTime)) {
+                    builder.append(attributeHandle);
+                    builder.append(" endShoppingTime:");
+                    int val = DecoderUtils.decodeInt(federate.encoderFactory, theAttributes.getValueReference(attributeHandle));
+                    builder.append(val);
+                    endShoppingTime = val;
+                } else if (attributeHandle.equals(federate.clientIsPrivileged)) {
+                    builder.append(attributeHandle);
+                    builder.append(" isPrivileged:");
+                    boolean val = DecoderUtils.decodeBoolean(federate.encoderFactory, theAttributes.getValueReference(attributeHandle));
+                    builder.append(val);
+                    isPrivileged = val;
+                } else {
+                    builder.append(attributeHandle);
+                    builder.append(" (Unknown)   ");
                 }
+
+                builder.append("\n");
             }
+            this.federate.updateClient(theObject, clientId, isPrivileged, endShoppingTime);
         }
     }
 
@@ -210,7 +205,7 @@ public class QueueAmbassador extends NullFederateAmbassador {
                     queueId = DecoderUtils.decodeInt(federate.encoderFactory, theParameters.getValueReference(parameterHandle));
                 }
             }
-            federate.addNewClientToQueue(queueId, clientId);
+            federate.addNewClientToQueue(queueId, clientId, time);
         } else if (interactionClass.equals(federate.closeCheckoutInteractionHandle)) {
             builder.append("closeCheckoutInteractionHandle");
             int checkoutId = 0;

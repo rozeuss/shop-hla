@@ -13,9 +13,11 @@ import java.util.concurrent.atomic.AtomicInteger;
 public class Checkout {
     public static final AtomicInteger count = new AtomicInteger(0);
 
-    private int checkoutId;
-    private int queueId;
-    private boolean open;
+    //FOM VARIABLES
+    int checkoutId;
+    int queueId;
+    boolean open;
+    //ADDITIONAL VARIABLES
     private ObjectInstanceHandle rtiHandler;
 
     public Checkout(ObjectInstanceHandle rtiHandler) {

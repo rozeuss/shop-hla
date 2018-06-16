@@ -7,7 +7,6 @@ import hla.rti1516e.exceptions.RTIexception;
 import hla.rti1516e.time.HLAfloat64Interval;
 import hla.rti1516e.time.HLAfloat64Time;
 import hla.rti1516e.time.HLAfloat64TimeFactory;
-import shop.object.Checkout;
 import shop.object.Client;
 import shop.object.Queue;
 import shop.utils.DecoderUtils;
@@ -37,6 +36,7 @@ public class QueueFederate {
     List<Queue> queues = new ArrayList<>();
     List<Queue> queuesToMake = new ArrayList<>();
     List<Client> clients = new ArrayList<>();
+    List<Client> clientsToDelete = new ArrayList<>();
     Map<ObjectInstanceHandle, ObjectClassHandle> instanceClassMap = new HashMap<>();
     ObjectClassHandle queueObjectHandle;
     AttributeHandle queueMaxSize;
@@ -115,11 +115,12 @@ public class QueueFederate {
         publishAndSubscribe();
         log("Published and Subscribed");
 
-//        receiveOpenCheckoutInteraction(checkoutId);
         registerNewQueue(new Queue(Queue.count.getAndIncrement(), random.nextInt(Queue.MAX_SIZE) + 1));
-        System.out.println("*************************************************");
+        System.out.println("***************************************************" +
+                "***********************************************");
         while (fedamb.running) {
             advanceTime(1.0);
+            System.out.println();
             log("Time Advanced to " + fedamb.federateTime);
             doThings();
         }
@@ -184,7 +185,7 @@ public class QueueFederate {
         rtiamb.subscribeObjectClassAttributes(clientObjectHandle, clientAttributes);
     }
 
-    private void updateQueueAttributeValues(Queue queue, HLAfloat64Time time) throws RTIexception {
+    private void updateQueueAttributeValues(Queue queue, LogicalTime time) throws RTIexception {
         AttributeHandleValueMap attributes = rtiamb.getAttributeHandleValueMapFactory().create(3);
         attributes.put(queueId, DecoderUtils.encodeInt(encoderFactory, queue.getQueueId()));
         attributes.put(queueCurrentSize, DecoderUtils.encodeInt(encoderFactory, queue.getCurrentSize()));
@@ -201,13 +202,8 @@ public class QueueFederate {
         }
     }
 
-    private void deleteObject(ObjectInstanceHandle handle) throws RTIexception {
-        rtiamb.deleteObjectInstance(handle, generateTag());
-    }
-
     private void doThings() throws RTIexception {
         queues.forEach(System.out::println);
-//        clients.forEach(System.out::println);
         HLAfloat64Time time = timeFactory.makeTime(fedamb.federateTime + fedamb.federateLookahead);
         for (Queue queue : queuesToMake) {
             registerNewQueue(queue);
@@ -259,7 +255,7 @@ public class QueueFederate {
         return rtiamb.registerObjectInstance(queueObjectHandle);
     }
 
-    void addNewClientToQueue(int queueId, int clientId) {
+    void addNewClientToQueue(int queueId, int clientId, LogicalTime time) {
         System.out.println("ADD NEW CLIENT TO QUEUE: (" + clientId + ")");
         System.out.println(queues.get(queueId));
         Optional<Client> client = clients.stream().filter(c -> c.getClientId() == clientId).findFirst();
@@ -278,14 +274,15 @@ public class QueueFederate {
 
     void removeClientFromQueue(int queueId, int clientId) {
         System.out.println("REMOVE CLIENT (" + clientId + ") FROM QUEUE (" + queueId + ")");
-        Queue queue = queues.get(queueId);
-        System.out.println(queue);
-//         queue.getClients().removeIf(client -> client.getClientId() == clientId);
-        Client removed = queue.getClients().remove(0); //TODO czy na pewno poprawnie?
-        if (removed != null) {
-            queue.setCurrentSize(queue.getCurrentSize() - 1);
+        Optional<Queue> first = queues.stream().filter(q -> q.getQueueId() == queueId).findFirst();
+        System.out.println(first.get());
+        if (!first.get().getClients().isEmpty()) {
+            Client removed = first.get().getClients().remove(0);
+            if (removed != null) {
+                first.get().setCurrentSize(first.get().getCurrentSize() - 1);
+            }
+            System.out.println(first.get());
         }
-        System.out.println(queues.get(queueId));
     }
 
     void closeCheckout(int queueId) {
