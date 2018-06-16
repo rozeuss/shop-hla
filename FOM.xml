@@ -46,7 +46,7 @@
                     <order>TimeStamp</order>
                 </attribute>
                 <attribute>
-                    <name>numberOfProducts</name>
+                    <name>endShoppingTime</name>
                     <dataType>HLAinteger32BE</dataType>
                     <transportation>HLAreliable</transportation>
                     <order>TimeStamp</order>
