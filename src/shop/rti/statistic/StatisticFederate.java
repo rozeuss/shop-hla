@@ -26,7 +26,7 @@ public class StatisticFederate {
 
     public static final String READY_TO_RUN = "ReadyToRun";
     static HashMap<InteractionClassHandle, Integer> interactionsCounter = new HashMap<>();
-    static HashMap<LogicalTime, Integer> timeInteractionsNoMap = new HashMap<>();
+    static HashMap<Double, Integer> timeInteractionsNoMap = new HashMap<>();
     static HashMap<ObjectClassHandle, Integer> objectsCounter = new HashMap<>();
     protected AttributeHandle queueId;
     protected AttributeHandle clientId;
@@ -168,7 +168,7 @@ public class StatisticFederate {
         log(interactionsCounter.toString());
         log("OBJECTS COUNTER");
         log(objectsCounter.toString());
-        Optional<Map.Entry<LogicalTime, Integer>> maxInteractionsInTime =
+        Optional<Map.Entry<Double, Integer>> maxInteractionsInTime =
                 timeInteractionsNoMap.entrySet().stream().max(Map.Entry.comparingByValue());
         maxInteractionsInTime.ifPresent(logicalTimeIntegerEntry ->
                 log("MOST INTERACTIONS (" + logicalTimeIntegerEntry.getValue()
@@ -357,27 +357,27 @@ public class StatisticFederate {
 
     void receiveEndServiceInteraction(InteractionClassHandle interactionClass, LogicalTime time,
                                       int checkoutId, int clientId) {
-        timeInteractionsNoMap.merge(time, 1, Integer::sum);
+        timeInteractionsNoMap.merge(Double.valueOf(time.toString()), 1, Integer::sum);
 
     }
 
     void receiveOpenCheckoutInteraction(InteractionClassHandle interactionClass, LogicalTime time,
                                         int checkoutId) {
-        timeInteractionsNoMap.merge(time, 1, Integer::sum);
+        timeInteractionsNoMap.merge(Double.valueOf(time.toString()), 1, Integer::sum);
     }
 
     void receiveCloseCheckoutInteraction(InteractionClassHandle interactionClass, LogicalTime time,
                                          int checkoutId) {
-        timeInteractionsNoMap.merge(time, 1, Integer::sum);
+        timeInteractionsNoMap.merge(Double.valueOf(time.toString()), 1, Integer::sum);
     }
 
     void receiveStartServiceInteraction(InteractionClassHandle interactionClass, LogicalTime time,
                                         int checkoutId, int clientId) {
-        timeInteractionsNoMap.merge(time, 1, Integer::sum);
+        timeInteractionsNoMap.merge(Double.valueOf(time.toString()), 1, Integer::sum);
     }
 
     void receiveChooseQueueInteraction(InteractionClassHandle interactionClass, LogicalTime time,
                                        int queueId, int clientId) {
-        timeInteractionsNoMap.merge(time, 1, Integer::sum);
+        timeInteractionsNoMap.merge(Double.valueOf(time.toString()), 1, Integer::sum);
     }
 }
