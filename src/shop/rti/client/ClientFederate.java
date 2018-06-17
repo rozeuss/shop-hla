@@ -35,14 +35,15 @@ public class ClientFederate {
     InteractionClassHandle chooseQueueInteractionHandle;
     ParameterHandle chooseQueueClientId;
     ParameterHandle chooseQueueCheckoutId;
-    InteractionClassHandle startServiceInteractionHandle;
-    ParameterHandle startServiceCheckoutIdParameter;
-    ParameterHandle startServiceClientIdParameter;
+    InteractionClassHandle clientExitInteractionHandle;
+    ParameterHandle clientExitCheckoutIdParameter;
+    ParameterHandle clientExitClientIdParameter;
     ObjectClassHandle checkoutObjectHandle;
     AttributeHandle checkoutIsOpened;
     AttributeHandle checkoutId;
     AttributeHandle checkoutQueueId;
     List<Client> clients = new ArrayList<>();
+    List<Client> clientsToDelete = new ArrayList<>();
     List<Checkout> checkouts = new ArrayList<>();
     List<Queue> queues = new ArrayList<>();
     Map<ObjectInstanceHandle, ObjectClassHandle> instanceClassMap = new HashMap<>();
@@ -122,7 +123,7 @@ public class ClientFederate {
         System.out.println("***************************************************" +
                 "***********************************************");
         while (fedamb.running) {
-            TimeUnit.MILLISECONDS.sleep(500);
+            TimeUnit.MILLISECONDS.sleep(500 * 2);
             advanceTime(1.0);
             System.out.println();
             log("Time Advanced to " + fedamb.federateTime);
@@ -177,10 +178,10 @@ public class ClientFederate {
         rtiamb.publishInteractionClass(chooseQueueInteractionHandle);
 
         // rozpoczecie obslugi
-        startServiceInteractionHandle = rtiamb.getInteractionClassHandle("HLAinteractionRoot.StartService");
-        startServiceCheckoutIdParameter = rtiamb.getParameterHandle(startServiceInteractionHandle, "checkoutId");
-        startServiceClientIdParameter = rtiamb.getParameterHandle(startServiceInteractionHandle, "clientId");
-        rtiamb.subscribeInteractionClass(startServiceInteractionHandle);
+        clientExitInteractionHandle = rtiamb.getInteractionClassHandle("HLAinteractionRoot.ClientExit");
+        clientExitCheckoutIdParameter = rtiamb.getParameterHandle(clientExitInteractionHandle, "checkoutId");
+        clientExitClientIdParameter = rtiamb.getParameterHandle(clientExitInteractionHandle, "clientId");
+        rtiamb.subscribeInteractionClass(clientExitInteractionHandle);
 
         // discover object kasa
         checkoutObjectHandle = rtiamb.getObjectClassHandle("HLAobjectRoot.Checkout");
@@ -219,8 +220,14 @@ public class ClientFederate {
 
     private void doThings() throws RTIexception {
         queues.forEach(System.out::println);
+//        clients.forEach(System.out::println);
         checkouts.forEach(System.out::println);
         HLAfloat64Time time = timeFactory.makeTime(fedamb.federateTime + fedamb.federateLookahead);
+        for (Client client : clientsToDelete) {
+            deleteObject(client.getRtiHandler(), time);
+            clients.stream().filter(c -> c.equals(client)).findFirst().ifPresent(c -> clients.remove(c));
+        }
+        clientsToDelete.clear();
         List<Client> shoppingClients = clients.stream()
                 .filter(((Predicate<Client>) Client::isWaitingInQueue).negate())
                 .collect(Collectors.toList());
@@ -309,8 +316,11 @@ public class ClientFederate {
     }
 
     void serviceClient(int checkoutId, int clientId, LogicalTime time) {
-        log("CLIENT SERVICED (" + checkoutId + ")");
-        //TODO
+        log("CLIENT SERVICED (" + clientId + ")");
+        clients.stream()
+                .filter(client -> client.getClientId() == clientId)
+                .findFirst()
+                .ifPresent(client -> clientsToDelete.add(client));
     }
 
     void updateQueue(ObjectInstanceHandle handle, int queueId, int queueMaxSize, int queueCurrentSize) {

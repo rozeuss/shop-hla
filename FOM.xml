@@ -114,7 +114,7 @@
             </interactionClass>
 
             <interactionClass>
-                <name>StartService</name>
+                <name>ClientExit</name>
                 <sharing>PublishSubscribe</sharing>
                 <dimensions/>
                 <transportation>HLAreliable</transportation>

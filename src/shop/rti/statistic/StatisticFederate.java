@@ -52,9 +52,9 @@ public class StatisticFederate {
     InteractionClassHandle endServiceInteractionHandle;
     ParameterHandle endServiceCheckoutId;
     ParameterHandle endServiceClientId;
-    InteractionClassHandle startServiceInteractionHandle;
-    ParameterHandle startServiceCheckoutIdParameter;
-    ParameterHandle startServiceClientIdParameter;
+    InteractionClassHandle clientExitInteractionHandle;
+    ParameterHandle clientExitCheckoutIdParameter;
+    ParameterHandle clientExitClientIdParameter;
     private ArrayList<Checkout> checkouts = new ArrayList<>();
     private ArrayList<Queue> queues = new ArrayList<>();
     private ArrayList<Client> clients = new ArrayList<>();
@@ -153,7 +153,7 @@ public class StatisticFederate {
         log("OPEN CHECKOUT:  [" + openCheckoutInteractionHandle + "]");
         log("CLOSE CHECKOUT: [" + closeCheckoutInteractionHandle + "]");
         log("END SERVICE:    [" + endServiceInteractionHandle + "]");
-        log("START SERVICE:  [" + startServiceInteractionHandle + "]");
+        log("START SERVICE:  [" + clientExitInteractionHandle + "]");
         log("---------------------------------------------------------------------------------------");
         log("OBJECTS HANDLERS");
         log("CHECKOUT     :  [" + checkoutObjectHandle + "]");
@@ -257,10 +257,10 @@ public class StatisticFederate {
         rtiamb.subscribeInteractionClass(endServiceInteractionHandle);
 
         // rozpoczecie obslugi
-        startServiceInteractionHandle = rtiamb.getInteractionClassHandle("HLAinteractionRoot.StartService");
-        startServiceCheckoutIdParameter = rtiamb.getParameterHandle(startServiceInteractionHandle, "checkoutId");
-        startServiceClientIdParameter = rtiamb.getParameterHandle(startServiceInteractionHandle, "clientId");
-        rtiamb.subscribeInteractionClass(startServiceInteractionHandle);
+        clientExitInteractionHandle = rtiamb.getInteractionClassHandle("HLAinteractionRoot.ClientExit");
+        clientExitCheckoutIdParameter = rtiamb.getParameterHandle(clientExitInteractionHandle, "checkoutId");
+        clientExitClientIdParameter = rtiamb.getParameterHandle(clientExitInteractionHandle, "clientId");
+        rtiamb.subscribeInteractionClass(clientExitInteractionHandle);
 
         // discover object kasa
         checkoutObjectHandle = rtiamb.getObjectClassHandle("HLAobjectRoot.Checkout");
@@ -371,7 +371,7 @@ public class StatisticFederate {
         timeInteractionsNoMap.merge(Double.valueOf(time.toString()), 1, Integer::sum);
     }
 
-    void receiveStartServiceInteraction(InteractionClassHandle interactionClass, LogicalTime time,
+    void receiveClientExitInteraction(InteractionClassHandle interactionClass, LogicalTime time,
                                         int checkoutId, int clientId) {
         timeInteractionsNoMap.merge(Double.valueOf(time.toString()), 1, Integer::sum);
     }

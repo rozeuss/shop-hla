@@ -46,6 +46,9 @@ public class QueueFederate {
     AttributeHandle clientIsPrivileged;
     AttributeHandle clientEndShoppingTime;
     AttributeHandle clientId;
+    InteractionClassHandle clientExitInteractionHandle;
+    ParameterHandle clientExitClientId;
+    ParameterHandle clientExitCheckoutId;
     private Random random = new Random();
     private RTIambassador rtiamb;
     private QueueAmbassador fedamb;
@@ -183,6 +186,12 @@ public class QueueFederate {
         clientAttributes.add(clientEndShoppingTime);
         clientAttributes.add(clientId);
         rtiamb.subscribeObjectClassAttributes(clientObjectHandle, clientAttributes);
+
+        // rozpoczecie obslugi
+        clientExitInteractionHandle = rtiamb.getInteractionClassHandle("HLAinteractionRoot.ClientExit");
+        clientExitCheckoutId = rtiamb.getParameterHandle(clientExitInteractionHandle, "checkoutId");
+        clientExitClientId = rtiamb.getParameterHandle(clientExitInteractionHandle, "clientId");
+        rtiamb.publishInteractionClass(clientExitInteractionHandle);
     }
 
     private void updateQueueAttributeValues(Queue queue, LogicalTime time) throws RTIexception {
@@ -205,6 +214,10 @@ public class QueueFederate {
     private void doThings() throws RTIexception {
         queues.forEach(System.out::println);
         HLAfloat64Time time = timeFactory.makeTime(fedamb.federateTime + fedamb.federateLookahead);
+        for (Client client : clientsToDelete) {
+            sendDeleteClientInteraction(client, time);
+        }
+        clientsToDelete.clear();
         for (Queue queue : queuesToMake) {
             registerNewQueue(queue);
         }
@@ -212,6 +225,16 @@ public class QueueFederate {
         for (Queue queue : queues) {
             updateQueueAttributeValues(queue, time);
         }
+    }
+
+    private void sendDeleteClientInteraction(Client client, HLAfloat64Time time) throws RTIexception {
+        log("DELETING (" + client.getClientId() + ") " + "CLIENT");
+        log("START SERVICE CHECKOUT: ");
+        ParameterHandleValueMap parameterHandleValueMap = rtiamb.getParameterHandleValueMapFactory().create(2);
+        parameterHandleValueMap.put(clientExitCheckoutId, encoderFactory.createHLAinteger32BE(0).toByteArray());
+        parameterHandleValueMap.put(clientExitClientId,
+                encoderFactory.createHLAinteger32BE(client.getClientId()).toByteArray());
+        rtiamb.sendInteraction(clientExitInteractionHandle, parameterHandleValueMap, generateTag(), time);
     }
 
     private byte[] generateTag() {
@@ -282,6 +305,7 @@ public class QueueFederate {
                 first.get().setCurrentSize(first.get().getCurrentSize() - 1);
             }
             System.out.println(first.get());
+            clientsToDelete.add(removed);
         }
     }
 

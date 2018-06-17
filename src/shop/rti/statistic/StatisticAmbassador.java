@@ -281,26 +281,26 @@ public class StatisticAmbassador extends NullFederateAmbassador {
                 }
             }
             federate.receiveEndServiceInteraction(interactionClass, time, checkoutId, clientId);
-        } else if (interactionClass.equals(federate.startServiceInteractionHandle)) {
+        } else if (interactionClass.equals(federate.clientExitInteractionHandle)) {
             builder.append("START SERVICE.");
             int checkoutId = 0;
             int clientId = 0;
             for (ParameterHandle parameterHandle : theParameters.keySet()) {
                 builder.append("\tparameter=");
-                if (parameterHandle.equals(federate.startServiceCheckoutIdParameter)) {
+                if (parameterHandle.equals(federate.clientExitCheckoutIdParameter)) {
                     builder.append(parameterHandle);
                     builder.append(" checkoutId:");
                     builder.append(DecoderUtils.decodeInt(federate.encoderFactory, theParameters.getValueReference(parameterHandle)));
                     checkoutId = DecoderUtils.decodeInt(federate.encoderFactory, theParameters.getValueReference(parameterHandle));
 
-                } else if (parameterHandle.equals(federate.startServiceClientIdParameter)) {
+                } else if (parameterHandle.equals(federate.clientExitClientIdParameter)) {
                     builder.append(parameterHandle);
                     builder.append(" clientId:");
                     builder.append(DecoderUtils.decodeInt(federate.encoderFactory, theParameters.getValueReference(parameterHandle)));
                     clientId = DecoderUtils.decodeInt(federate.encoderFactory, theParameters.getValueReference(parameterHandle));
                 }
             }
-            federate.receiveStartServiceInteraction(interactionClass, time, checkoutId, clientId);
+            federate.receiveClientExitInteraction(interactionClass, time, checkoutId, clientId);
         }
 
     }
@@ -311,14 +311,12 @@ public class StatisticAmbassador extends NullFederateAmbassador {
                                      OrderType sentOrdering,
                                      SupplementalRemoveInfo removeInfo)
             throws FederateInternalError {
-        log("Object Removed: handle=" + theObject);
     }
 
     @Override
     public void discoverObjectInstance(ObjectInstanceHandle theObject,
                                        ObjectClassHandle theObjectClass,
                                        String objectName) throws FederateInternalError {
-        log("Discoverd Object: handle=" + theObject + ", classHandle=" + theObjectClass + ", name=" + objectName);
         this.federate.instanceClassMap.put(theObject, theObjectClass);
         StatisticFederate.objectsCounter.merge(theObjectClass, 1, Integer::sum);
         if (theObjectClass.equals(this.federate.clientObjectHandle)) {

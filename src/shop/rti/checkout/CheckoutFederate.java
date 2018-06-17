@@ -32,9 +32,9 @@ public class CheckoutFederate {
     ParameterHandle openCheckoutCheckoutId;
     InteractionClassHandle closeCheckoutInteractionHandle;
     ParameterHandle closeCheckoutCheckoutId;
-    InteractionClassHandle startServiceInteractionHandle;
-    ParameterHandle startServiceClientId;
-    ParameterHandle startServiceCheckoutId;
+    InteractionClassHandle clientExitInteractionHandle;
+    ParameterHandle clientExitClientId;
+    ParameterHandle clientExitCheckoutId;
     InteractionClassHandle endServiceInteractionHandle;
     ParameterHandle endServiceCheckoutId;
     ParameterHandle endServiceClientId;
@@ -144,12 +144,12 @@ public class CheckoutFederate {
         }
     }
 
-    private void sendStartServiceInteraction(int checkoutId, HLAfloat64Time time) throws RTIexception {
-        log("START SERVICE CHECKOUT: (" + checkoutId + ")");
+    private void sendClientExitInteraction(int checkoutId, HLAfloat64Time time) throws RTIexception {
+        log("CLIENT EXIT CHECKOUT: (" + checkoutId + ")");
         ParameterHandleValueMap parameterHandleValueMap = rtiamb.getParameterHandleValueMapFactory().create(2);
-        parameterHandleValueMap.put(startServiceCheckoutId, encoderFactory.createHLAinteger32BE(checkoutId).toByteArray());
-        parameterHandleValueMap.put(startServiceClientId, encoderFactory.createHLAinteger32BE(0).toByteArray());
-        rtiamb.sendInteraction(startServiceInteractionHandle, parameterHandleValueMap, generateTag(), time);
+        parameterHandleValueMap.put(clientExitCheckoutId, encoderFactory.createHLAinteger32BE(checkoutId).toByteArray());
+        parameterHandleValueMap.put(clientExitClientId, encoderFactory.createHLAinteger32BE(0).toByteArray());
+        rtiamb.sendInteraction(clientExitInteractionHandle, parameterHandleValueMap, generateTag(), time);
     }
 
     private void sendEndServiceInteraction(int checkoutId, HLAfloat64Time time) throws RTIexception {
@@ -172,10 +172,10 @@ public class CheckoutFederate {
         rtiamb.subscribeInteractionClass(closeCheckoutInteractionHandle);
 
         // rozpoczecie obslugi
-        startServiceInteractionHandle = rtiamb.getInteractionClassHandle("HLAinteractionRoot.StartService");
-        startServiceCheckoutId = rtiamb.getParameterHandle(startServiceInteractionHandle, "checkoutId");
-        startServiceClientId = rtiamb.getParameterHandle(startServiceInteractionHandle, "clientId");
-        rtiamb.publishInteractionClass(startServiceInteractionHandle);
+        clientExitInteractionHandle = rtiamb.getInteractionClassHandle("HLAinteractionRoot.ClientExit");
+        clientExitCheckoutId = rtiamb.getParameterHandle(clientExitInteractionHandle, "checkoutId");
+        clientExitClientId = rtiamb.getParameterHandle(clientExitInteractionHandle, "clientId");
+        rtiamb.publishInteractionClass(clientExitInteractionHandle);
 
         // zakoczenie obslugi
         endServiceInteractionHandle = rtiamb.getInteractionClassHandle("HLAinteractionRoot.EndService");
@@ -253,7 +253,7 @@ public class CheckoutFederate {
                         if (!queuesNowServicingTime.containsKey(q.get().getQueueId())) {
                             queuesNowServicingTime.put(q.get().getQueueId(),
                                     fedamb.federateTime + random.nextInt(6));
-                            sendStartServiceInteraction(q.get().getQueueId(), time);
+//                            sendClientExitInteraction(q.get().getQueueId(), time);
                         }
 
                     }

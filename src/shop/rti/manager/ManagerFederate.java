@@ -236,7 +236,7 @@ public class ManagerFederate {
         if (collect.size() > 1) {
             if (!hasBeenOpen) {
                 List<Queue> emptyQueues = queues.stream()
-                        .filter(queue -> queue.getCurrentSize() < 2).collect(Collectors.toList());
+                        .filter(queue -> queue.getCurrentSize() < 1).collect(Collectors.toList());
                 for (Checkout checkout : checkouts) {
                     for (Queue emptyQueue : emptyQueues) {
                         if (checkout.getQueueId() == emptyQueue.getQueueId()) {

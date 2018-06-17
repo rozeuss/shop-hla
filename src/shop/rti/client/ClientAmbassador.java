@@ -222,18 +222,18 @@ public class ClientAmbassador extends NullFederateAmbassador {
         StringBuilder builder = new StringBuilder("Interaction Received: ");
         builder.append(interactionClass);
         builder.append(receiveInfo);
-        if (interactionClass.equals(federate.startServiceInteractionHandle)) {
+        if (interactionClass.equals(federate.clientExitInteractionHandle)) {
             builder.append("START SERVICE.");
             int checkoutId = 0;
             int clientId = 0;
             for (ParameterHandle parameterHandle : theParameters.keySet()) {
                 builder.append("\tparameter=");
-                if (parameterHandle.equals(federate.startServiceCheckoutIdParameter)) {
+                if (parameterHandle.equals(federate.clientExitCheckoutIdParameter)) {
                     builder.append(parameterHandle);
                     builder.append(" checkoutId:");
                     builder.append(DecoderUtils.decodeInt(federate.encoderFactory, theParameters.getValueReference(parameterHandle)));
                     checkoutId = DecoderUtils.decodeInt(federate.encoderFactory, theParameters.getValueReference(parameterHandle));
-                } else if (parameterHandle.equals(federate.startServiceClientIdParameter)) {
+                } else if (parameterHandle.equals(federate.clientExitClientIdParameter)) {
                     builder.append(parameterHandle);
                     builder.append(" clientId:");
                     builder.append(DecoderUtils.decodeInt(federate.encoderFactory, theParameters.getValueReference(parameterHandle)));

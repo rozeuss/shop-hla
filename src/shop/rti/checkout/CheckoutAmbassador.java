@@ -215,6 +215,5 @@ public class CheckoutAmbassador extends NullFederateAmbassador {
     public void removeObjectInstance(ObjectInstanceHandle theObject, byte[] tag, OrderType sentOrdering,
                                      SupplementalRemoveInfo removeInfo)
             throws FederateInternalError {
-        log("Object Removed: handle=" + theObject);
     }
 }
