@@ -12,9 +12,9 @@ import java.util.concurrent.atomic.AtomicInteger;
 @NoArgsConstructor
 public class Client {
     public static final AtomicInteger count = new AtomicInteger(0);
-    public static final int MAX_SHOPPING_TIME = 2;
+    public static final int MAX_SHOPPING_TIME = 3;
     public static final int CLIENT_ARRIVAL_PROBABILITY = 2;
-    public static final int PRIVILEGED_CLIENT_PROBABILITY = 3;
+    public static final int PRIVILEGED_CLIENT_PROBABILITY = 4;
 
     //FOM VARIABLES
     int clientId;

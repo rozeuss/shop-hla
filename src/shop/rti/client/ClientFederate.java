@@ -316,11 +316,12 @@ public class ClientFederate {
     }
 
     void serviceClient(int checkoutId, int clientId, LogicalTime time) {
-        log("CLIENT SERVICED (" + clientId + ")");
-        clients.stream()
+//        log("CLIENT SERVICED (" + clientId + ")");
+        Optional<Client> first = clients.stream()
                 .filter(client -> client.getClientId() == clientId)
-                .findFirst()
-                .ifPresent(client -> clientsToDelete.add(client));
+                .findFirst();
+//        log("CZY ISTNIEJE " + first.get());
+        first.ifPresent(client -> clientsToDelete.add(client));
     }
 
     void updateQueue(ObjectInstanceHandle handle, int queueId, int queueMaxSize, int queueCurrentSize) {

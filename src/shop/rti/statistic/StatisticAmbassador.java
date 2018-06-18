@@ -309,8 +309,8 @@ public class StatisticAmbassador extends NullFederateAmbassador {
     public void removeObjectInstance(ObjectInstanceHandle theObject,
                                      byte[] tag,
                                      OrderType sentOrdering,
-                                     SupplementalRemoveInfo removeInfo)
-            throws FederateInternalError {
+                                     SupplementalRemoveInfo removeInfo) throws FederateInternalError {
+        log("XD " + theObject);
     }
 
     @Override

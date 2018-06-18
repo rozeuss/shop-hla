@@ -260,6 +260,8 @@ public class CheckoutFederate {
                 }
             }
         }
+//        System.out.println("KOLEJKI TERAZ OBSLUGUJACE");
+//        System.out.println(queuesNowServicingTime);
         List<Integer> toDeleteList = new ArrayList<>();
         for (Map.Entry<Integer, Double> integerDoubleEntry : queuesNowServicingTime.entrySet()) {
             if (integerDoubleEntry.getValue() == fedamb.federateTime) {
@@ -268,9 +270,13 @@ public class CheckoutFederate {
                 sendEndServiceInteraction(integerDoubleEntry.getKey(), time);
             }
         }
+//        System.out.println("KOLEJKI DO USNIECIA");
+//        System.out.println(toDeleteList);
         for (Integer aDouble : toDeleteList) {
             queuesNowServicingTime.remove(aDouble);
         }
+//        System.out.println("PO USUNIECIU");
+//        System.out.println(queuesNowServicingTime);
         for (Checkout checkout : checkouts) {
             updateCheckoutAttributeValues(checkout, time);
         }

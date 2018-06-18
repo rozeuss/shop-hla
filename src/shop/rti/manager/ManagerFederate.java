@@ -16,6 +16,7 @@ import java.io.InputStreamReader;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.*;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
 @SuppressWarnings("Duplicates")
@@ -50,7 +51,7 @@ public class ManagerFederate {
     private RTIambassador rtiamb;
     private ManagerAmbassador fedamb;
     private HLAfloat64TimeFactory timeFactory;
-    private int servicedClientsNo = 0;
+    private AtomicInteger servicedClientsNo = new AtomicInteger(0);
 
     public static void main(String[] args) {
         String federateName = "manager";
@@ -219,7 +220,7 @@ public class ManagerFederate {
         HLAfloat64Time time = timeFactory.makeTime(fedamb.federateTime + fedamb.federateLookahead);
         boolean hasBeenOpen = false;
         int queuesMaxSizeSum = queues.stream().mapToInt(Queue::getMaxSize).sum();
-        if (queuesMaxSizeSum < (clients.size() - servicedClientsNo)) {
+        if (queuesMaxSizeSum < (clients.size() - servicedClientsNo.get())) {
             Optional<Checkout> closedCheckout = checkouts.stream().filter(checkout -> !checkout.isOpen()).findFirst();
             if (!closedCheckout.isPresent()) {
                 sendOpenCheckoutInteraction(Checkout.count.incrementAndGet(), time);
@@ -317,6 +318,6 @@ public class ManagerFederate {
     }
 
     void receiveEndServiceInteraction(int checkoutId, int clientId) {
-        servicedClientsNo++;
+        servicedClientsNo.incrementAndGet();
     }
 }

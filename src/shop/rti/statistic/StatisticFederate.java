@@ -16,18 +16,16 @@ import java.io.File;
 import java.io.InputStreamReader;
 import java.net.MalformedURLException;
 import java.net.URL;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 
 @SuppressWarnings("Duplicates")
 public class StatisticFederate {
 
     public static final String READY_TO_RUN = "ReadyToRun";
     static HashMap<InteractionClassHandle, Integer> interactionsCounter = new HashMap<>();
-    static HashMap<Double, Integer> timeInteractionsNoMap = new HashMap<>();
-    static HashMap<ObjectClassHandle, Integer> objectsCounter = new HashMap<>();
+    private static ConcurrentHashMap<Double, Integer> timeInteractionsNoMap = new ConcurrentHashMap<>();
+    static ConcurrentHashMap<ObjectClassHandle, Integer> objectsCounter = new ConcurrentHashMap<>();
     protected AttributeHandle queueId;
     protected AttributeHandle clientId;
     protected AttributeHandle checkoutId;
@@ -55,9 +53,9 @@ public class StatisticFederate {
     InteractionClassHandle clientExitInteractionHandle;
     ParameterHandle clientExitCheckoutIdParameter;
     ParameterHandle clientExitClientIdParameter;
-    private ArrayList<Checkout> checkouts = new ArrayList<>();
-    private ArrayList<Queue> queues = new ArrayList<>();
-    private ArrayList<Client> clients = new ArrayList<>();
+    private List<Checkout> checkouts = Collections.synchronizedList(new ArrayList<Checkout>());
+    private List<Queue> queues = Collections.synchronizedList(new ArrayList<Queue>());
+    private List<Client> clients = Collections.synchronizedList(new ArrayList<Client>());
     private RTIambassador rtiamb;
     private StatisticAmbassador fedamb;
     private HLAfloat64TimeFactory timeFactory;
@@ -163,6 +161,7 @@ public class StatisticFederate {
     }
 
     private void doThings() {
+        checkouts.forEach(System.out::println);
         log("");
         log("INTERACTIONS COUNTER");
         log(interactionsCounter.toString());
@@ -174,7 +173,6 @@ public class StatisticFederate {
                 log("MOST INTERACTIONS (" + logicalTimeIntegerEntry.getValue()
                         + ") OCCURRED IN " + logicalTimeIntegerEntry.getKey() + " TIME UNIT"));
         log("AVERAGE SERVICE TIME");
-        //TODO
         clientStatistic();
         checkoutStatistic();
         queueStatistic();
@@ -188,7 +186,6 @@ public class StatisticFederate {
         log("              CLIENTS: (" + clients.size() + ")");
         log("   PRIVILEGED CLIENTS: (" + privilegedClients + ")");
         log(" UNPRIVILEGED CLIENTS: (" + (clients.size() - privilegedClients) + ")");
-        //TODO
         double averageShoppingTime = clients.stream()
                 .mapToDouble(c -> c.getEndShoppingTime() - c.getArrivalTime()).average().orElse(0);
         log("AVERAGE SHOPPING TIME: (" + (averageShoppingTime) + ")");
@@ -207,7 +204,7 @@ public class StatisticFederate {
         log("       QUEUE SIZE SUM: (" + allQueuesSizeSum + ")");
         int currentSizeSum = queues.stream().mapToInt(Queue::getCurrentSize).sum();
         log("     CURRENT SIZE SUM: (" + currentSizeSum + ")");
-        double averageQueueSize = queues.stream().mapToInt(Queue::getCurrentSize).average().orElse(0);
+        double averageQueueSize = queues.stream().filter(queue -> queue.getCurrentSize() > 0).mapToInt(Queue::getCurrentSize).average().orElse(0);
         log("   AVERAGE QUEUE SIZE: (" + averageQueueSize + ")");
     }
 
@@ -294,6 +291,7 @@ public class StatisticFederate {
         clientAttributes.add(clientEndShoppingTime);
         clientAttributes.add(clientId);
         rtiamb.subscribeObjectClassAttributes(clientObjectHandle, clientAttributes);
+        rtiamb.publishObjectClassAttributes(clientObjectHandle, clientAttributes);
     }
 
     private void advanceTime(double timestep) throws RTIexception {
